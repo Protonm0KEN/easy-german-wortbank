@@ -241,7 +241,7 @@ function buildQueue(state,today,kind,scope){
   const pool=DECK.filter(c=>(kind==='all'||c.kind===kind)&&(scope==null||c.lesson===scope));
   const due=pool.filter(c=>state.cards[c.id]&&state.cards[c.id].due<=today);
   const used=state.newDay===today?state.newCount:0;
-  const fresh=pool.filter(c=>!state.cards[c.id]).slice(0,Math.max(0,NEW_PER_DAY-used));
+  const fresh=[]; // new words are learned in Roadmap packs; SRS only reviews
   return [...due,...fresh].map(c=>c.id);
 }
 function SRS({state,update,li}){
@@ -268,7 +268,7 @@ function SRS({state,update,li}){
     window.addEventListener('keydown',on);return()=>window.removeEventListener('keydown',on)});
   const prev=card&&(state.cards[card.id]||{box:0});
   const preview=r=>{const n=rate(state.cards[card.id],r,today);return r==='again'?'again today':inDays(INTERVALS[n.box])};
-  return <section><Head de="SRS-Karteikarten" title={`Shared across all videos · ${NEW_PER_DAY} new cards a day`}/>
+  return <section><Head de="SRS-Karteikarten" title="Reviews only · new words come from Roadmap packs"/>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3"><Filter label="Card type" value={kind} onChange={change} options={[['all','All'],['word','Words'],['verb','Verbs'],['phrase','Phrases']]}/>{li!=null?<Filter label="Which videos" value={scope==null?'every':'this'} onChange={changeScope} options={[['this','This video'],['every','All videos']]}/>:null}</div><span className="font-mono text-sm text-muted">{queue.length} left · {done} done</span></div>
     {card?<div className="mx-auto max-w-xl">
       <button onClick={()=>setFlip(f=>!f)} aria-label={flip?'Show the German side':'Show the answer'} className="block min-h-64 w-full rounded-lg border border-line bg-surface p-6 text-left shadow-sm">
