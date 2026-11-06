@@ -6,6 +6,8 @@
  --der:#1f5fae;--der-soft:#dde8f8;--die:#b0295a;--die-soft:#f9e0ea;--das:#23784a;--das-soft:#dcefe3;
  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;--data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
+[data-hue="cyan"]{--accent:#0e7490;--accent-soft:#d9f1f7;--on-accent:#ffffff}
+[data-hue="magenta"]{--accent:#a3208f;--accent-soft:#f7e2f3;--on-accent:#ffffff}
 [data-hue="indigo"]{--accent:#4f46e5;--accent-soft:#e9e8fd;--on-accent:#ffffff}
 [data-hue="tangerine"]{--accent:#c2500a;--accent-soft:#fde8da;--on-accent:#ffffff}
 [data-hue="teal"]{--accent:#0d7a74;--accent-soft:#d6f0ed;--on-accent:#ffffff}
@@ -19,6 +21,8 @@
  --accent:#8f89ff;--accent-soft:#25234b;--on-accent:#14131f;
  --good:#62d092;--good-soft:#16321f;--bad:#ff7d8b;--bad-soft:#3d1a1f;--warn:#f0bb52;--warn-soft:#3a2c10;
  --der:#7fb2f5;--der-soft:#18294a;--die:#f28fb2;--die-soft:#3d1a28;--das:#73cf98;--das-soft:#17321f;color-scheme:dark}
+  :root:not([data-theme="light"]) [data-hue="cyan"]{--accent:#5cc8e4;--accent-soft:#123540;--on-accent:#14131f}
+  :root:not([data-theme="light"]) [data-hue="magenta"]{--accent:#ea86da;--accent-soft:#3a1b36;--on-accent:#14131f}
   :root:not([data-theme="light"]) [data-hue="indigo"]{--accent:#8f89ff;--accent-soft:#25234b;--on-accent:#14131f}
   :root:not([data-theme="light"]) [data-hue="tangerine"]{--accent:#ff9d5f;--accent-soft:#3b2416;--on-accent:#14131f}
   :root:not([data-theme="light"]) [data-hue="teal"]{--accent:#46c8bf;--accent-soft:#123432;--on-accent:#14131f}
@@ -33,6 +37,8 @@
  --accent:#8f89ff;--accent-soft:#25234b;--on-accent:#14131f;
  --good:#62d092;--good-soft:#16321f;--bad:#ff7d8b;--bad-soft:#3d1a1f;--warn:#f0bb52;--warn-soft:#3a2c10;
  --der:#7fb2f5;--der-soft:#18294a;--die:#f28fb2;--die-soft:#3d1a28;--das:#73cf98;--das-soft:#17321f;color-scheme:dark}
+:root[data-theme="dark"] [data-hue="cyan"]{--accent:#5cc8e4;--accent-soft:#123540;--on-accent:#14131f}
+:root[data-theme="dark"] [data-hue="magenta"]{--accent:#ea86da;--accent-soft:#3a1b36;--on-accent:#14131f}
 :root[data-theme="dark"] [data-hue="indigo"]{--accent:#8f89ff;--accent-soft:#25234b;--on-accent:#14131f}
 :root[data-theme="dark"] [data-hue="tangerine"]{--accent:#ff9d5f;--accent-soft:#3b2416;--on-accent:#14131f}
 :root[data-theme="dark"] [data-hue="teal"]{--accent:#46c8bf;--accent-soft:#123432;--on-accent:#14131f}

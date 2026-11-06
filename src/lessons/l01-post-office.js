@@ -157,6 +157,13 @@ export default {
   {type:'gap',q:'Das Paket wurde gestern nicht ________. (zu·stellen, Partizip II)',a:'zugestellt',why:'Passiv Präteritum: wurde + Partizip II. Trennbares Verb: zu + ge + stellt = zugestellt.'},
   ]},
  ],
+ cheat:[
+  'Abholen: Abholschein und Personalausweis zeigen, dann am Gerät unterschreiben.',
+  'Brief: der Empfänger unten rechts, das Porto oben rechts, der Absender hinten.',
+  'Einschreiben: Einwurf landet im Briefkasten, bei der Übergabe muss der Empfänger unterschreiben. Den Beleg mit der Sendungsnummer als Nachweis aufbewahren.',
+  'Schalter-Deutsch: Passiv (Es wird zugestellt), Konjunktiv II (Ich könnte Ihnen … anbieten) und höfliches dürfen (Sie dürfen zum Gerät).',
+  'Bezahlen: Zahlen Sie bar oder mit Karte? · Was macht das? · Einen schönen Tag noch. – Ebenso.',
+ ],
  drills:{
  'ab·holen':[["I'm picking up my parcel tomorrow.",['Ich hole morgen mein Paket ab.','Ich hole mein Paket morgen ab.','Morgen hole ich mein Paket ab.']],["Have you already picked up the letter? (du)",['Hast du den Brief schon abgeholt?','Hast du schon den Brief abgeholt?']]],
  'zurück·schicken':[["She is sending the shoes back.",['Sie schickt die Schuhe zurück.']],["We sent the parcel back yesterday.",['Wir haben das Paket gestern zurückgeschickt.','Wir haben gestern das Paket zurückgeschickt.','Gestern haben wir das Paket zurückgeschickt.','Wir schickten das Paket gestern zurück.']]],

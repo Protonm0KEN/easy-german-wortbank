@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useMemo,useRef,useCallback} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle} from 'react-icons/lu';
+import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle,LuRoute,LuStickyNote,LuCircle,LuCircleCheck,LuArrowRight,LuEye,LuEyeOff,LuTrophy} from 'react-icons/lu';
 import {LESSONS} from './lessons/index.js';
 
 /* ---------- dates and spaced repetition ---------- */
@@ -32,7 +32,7 @@ const DECK=LESSONS.flatMap((l,li)=>[
 ]);
 
 /* ---------- persistence: this browser, shared by every page of the site ---------- */
-const EMPTY={cards:{},texts:{},drills:{},streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
+const EMPTY={cards:{},texts:{},drills:{},roadmap:{},streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
 const LS='eg-wortbank-v1';
 const readLocal=()=>{try{return JSON.parse(localStorage.getItem(LS))}catch{return null}};
 const writeLocal=s=>{try{localStorage.setItem(LS,JSON.stringify(s))}catch{}};
@@ -97,9 +97,9 @@ function Verdict({ok,shown,onAccept,accepted}){
   return ok||accepted?<span className="inline-flex items-center gap-1 text-sm text-good"><LuCheck aria-hidden className="size-4"/>{accepted&&!ok?'Counted as correct':'Richtig'}</span>
   :<span className="inline-flex flex-wrap items-center gap-2 text-sm text-bad"><span className="inline-flex items-center gap-1"><LuX aria-hidden className="size-4"/>Not quite</span>{onAccept?<button onClick={onAccept} className="text-muted underline underline-offset-2 hover:text-ink">I was right, count it</button>:null}</span>;
 }
-function Training({lesson,state,update}){
+function Training({lesson,state,update,start}){
   const verbs=lesson.verbs;
-  const [i,setI]=useState(0),[tense,setTense]=useState('pr');
+  const [i,setI]=useState(start||0),[tense,setTense]=useState('pr');
   const [ans,setAns]=useState({}),[shown,setShown]=useState({}),[acc,setAcc]=useState({});
   const active=useRef(null);
   const v=verbs[i], sents=lesson.drills?.[v.inf]||[], id=`${lesson.id}:v:${v.inf}`;
@@ -353,33 +353,130 @@ function Progress({state,update,li}){
     </div>
     {li!=null?<div className="panel mt-4 p-5"><h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-accent">Wortnetz</h3><Graph state={state} li={li}/></div>:null}
     <div className="panel mt-4 p-5"><h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-accent">Lessons</h3>
-    <div className="overflow-x-auto"><table className="w-full min-w-[30rem] text-sm"><thead><tr className="border-b border-line text-left text-muted"><th scope="col" className="py-1 pr-3 font-normal">Video</th><th scope="col" className="py-1 pr-3 text-right font-normal">Entries</th><th scope="col" className="py-1 pr-3 text-right font-normal">Started</th><th scope="col" className="py-1 text-right font-normal">Texts done</th></tr></thead>
-      <tbody>{LESSONS.map((l,i)=>{const cs=DECK.filter(c=>c.lesson===i);return <tr key={l.id} className="border-b border-line/60"><td className="py-2.5 pr-3"><a className="text-accent underline underline-offset-2" href={pageHref(l)}>{l.title}</a></td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.length}</td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.filter(c=>state.cards[c.id]).length}</td><td className="py-1.5 text-right font-mono text-ink">{l.texts.filter(t=>state.texts[t.id]).length} / {l.texts.length}</td></tr>})}</tbody></table></div></div>
+    <div className="overflow-x-auto"><table className="w-full min-w-[30rem] text-sm"><thead><tr className="border-b border-line text-left text-muted"><th scope="col" className="py-1 pr-3 font-normal">Video</th><th scope="col" className="py-1 pr-3 text-right font-normal">Entries</th><th scope="col" className="py-1 pr-3 text-right font-normal">Started</th><th scope="col" className="py-1 pr-3 text-right font-normal">Texts done</th><th scope="col" className="py-1 text-right font-normal">Roadmap</th></tr></thead>
+      <tbody>{LESSONS.map((l,i)=>{const cs=DECK.filter(c=>c.lesson===i);return <tr key={l.id} className="border-b border-line/60"><td className="py-2.5 pr-3"><a className="text-accent underline underline-offset-2" href={pageHref(l)}>{l.title}</a></td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.length}</td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.filter(c=>state.cards[c.id]).length}</td><td className="py-1.5 text-right font-mono text-ink">{l.texts.filter(t=>state.texts[t.id]).length} / {l.texts.length}</td><td className="py-2.5 text-right font-mono text-ink">{roadmap(i,state).pct}%</td></tr>})}</tbody></table></div></div>
     <Backup state={state} update={update}/>
+  </section>;
+}
+
+/* ---------- Roadmap: tasks computed from progress in the other tabs ---------- */
+const chunks=(a,n)=>Array.from({length:Math.ceil(a.length/n)},(_,k)=>a.slice(k*n,k*n+n));
+export function roadmap(li,state){
+  const l=LESSONS[li], rm=state.roadmap?.[l.id]||{}, D=DECK.filter(c=>c.lesson===li);
+  const ids=p=>D.filter(c=>c.id.startsWith(`${l.id}:${p}:`)).map(c=>c.id);
+  const seen=a=>a.filter(id=>state.cards[id]).length;
+  const dr=v=>state.drills?.[`${l.id}:v:${v.inf}`]||{};
+  const core=v=>{const d=dr(v);return d.t&&d.pr===6&&(!d.sn||d.s===d.sn)};
+  const past=v=>{const d=dr(v);return d.pt===6&&d.pf===6};
+  const read=(id,title,hint,tab)=>({id,title,hint,tab,manual:true,done:rm[id]?1:0,total:1});
+  const vidx=v=>l.verbs.indexOf(v);
+  const exam=l.texts.filter(t=>!t.paras.length), reading=l.texts.filter(t=>t.paras.length);
+  const textTask=t=>{const r=state.texts[t.id];return {id:'text:'+t.id,title:t.title,hint:r?`Last score ${r.score}/${r.total}`:'Answer every question, then check',tab:'goethe',done:r?1:0,total:1}};
+  const all=D.map(c=>c.id), target=Math.ceil(all.length*.8);
+  const stages=[
+    {t:'Überblick',en:'Get the big picture',tasks:[
+      read('read:verben','Skim the verb list','Open a few rows and look at the forms','verben'),
+      read('read:redemittel','Read the phrases','Say each one out loud once','redemittel'),
+      read('read:vokabeln','Read nouns & adjectives','Notice the der / die / das colours','vokabeln')]},
+    {t:'Wörter einprägen',en:'Meet every card once',tasks:[
+      {id:'srs:n',title:'Meet every noun in SRS',hint:'Cards count when you rate them',tab:'srs',done:seen(ids('n')),total:ids('n').length},
+      {id:'srs:m',title:'Meet adjectives and adverbs',hint:'Filter SRS to Words',tab:'srs',done:seen(ids('m')),total:ids('m').length},
+      {id:'srs:p',title:'Meet every phrase',hint:'Filter SRS to Phrases',tab:'srs',done:seen(ids('p')),total:ids('p').length}]},
+    {t:'Verben trainieren',en:'Meaning, Präsens and sentences',tasks:chunks(l.verbs,6).map((g,k)=>({id:'verbs:'+k,title:`Verbs ${vidx(g[0])+1}–${vidx(g[g.length-1])+1}: ${g.map(v=>clean(v.inf)).slice(0,3).join(', ')}…`,hint:'In Training: meaning, Präsens 6/6, all sentences',tab:'training',verb:vidx(g.find(v=>!core(v))??g[0]),done:g.filter(core).length,total:g.length}))},
+    {t:'Grammatik & Fehler',en:'Understand the structures',tasks:[
+      read('read:grammatik','Work through the grammar cards','Read each rule and its examples','grammatik'),
+      read('read:fehler','Read the common mistakes','Cover the right answer and test yourself','fehler'),
+      ...exam.map(textTask)]},
+    {t:'Vergangenheit',en:'Präteritum and Perfekt',tasks:chunks(l.verbs,12).map((g,k)=>({id:'past:'+k,title:`Past forms, verbs ${vidx(g[0])+1}–${vidx(g[g.length-1])+1}`,hint:'In Training: Präteritum 6/6 and Perfekt 6/6',tab:'training',verb:vidx(g.find(v=>!past(v))??g[0]),done:g.filter(past).length,total:g.length}))},
+    {t:'Goethe B2',en:'Exam-style reading',tasks:reading.map(textTask)},
+    {t:'Festigen',en:'Make it stick',tasks:[
+      {id:'srs:box2',title:'Get 80% of cards to box 2',hint:'Box 2 means two good reviews on different days',tab:'srs',done:Math.min(target,all.filter(id=>(state.cards[id]?.box||0)>=2).length),total:target},
+      read('read:cheat','Read the Spickzettel','Your one-page summary for later','spickzettel')]},
+  ];
+  const tasks=stages.flatMap(x=>x.tasks), frac=x=>Math.min(1,x.done/x.total);
+  stages.forEach(x=>{x.complete=x.tasks.every(k=>k.done>=k.total);x.n=x.tasks.filter(k=>k.done>=k.total).length});
+  return {stages,tasks,doneTasks:tasks.filter(k=>k.done>=k.total).length,pct:Math.round(tasks.reduce((a,k)=>a+frac(k),0)/tasks.length*100),current:stages.findIndex(x=>!x.complete)};
+}
+function Roadmap({li,state,update,go}){
+  const r=roadmap(li,state), l=LESSONS[li];
+  const [open,setOpen]=useState(()=>new Set([Math.max(0,r.current)]));
+  const toggle=k=>setOpen(o=>{const n=new Set(o);n.has(k)?n.delete(k):n.add(k);return n});
+  const mark=(id,v)=>update(s=>({...s,roadmap:{...s.roadmap,[l.id]:{...(s.roadmap?.[l.id]||{}),[id]:v}}}));
+  const next=r.tasks.find(k=>k.done<k.total);
+  const finished=r.current===-1;
+  return <section><Head de="Roadmap" title="Seven stages · work in the other tabs ticks tasks off by itself"/>
+    <div className="panel mb-5 grid items-center gap-5 p-5 sm:grid-cols-[auto_1fr_auto]">
+      <svg viewBox="0 0 64 64" className="size-20" role="img" aria-label={`Roadmap ${r.pct}% complete`}><circle cx="32" cy="32" r="27" fill="none" stroke="var(--accent-soft)" strokeWidth="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${r.pct*1.696} 170`} transform="rotate(-90 32 32)"/><text x="32" y="37" textAnchor="middle" fontSize="15" fontWeight="700" fill="var(--ink)" className="font-sans">{r.pct}%</text></svg>
+      <div className="min-w-0">{finished?<><p className="flex items-center gap-2 font-display text-xl font-semibold text-ink"><LuTrophy aria-hidden className="size-5 text-accent"/>Lektion abgeschlossen</p><p className="text-muted">You have learned this video. From now on, refresh with the Spickzettel and keep up your SRS reviews.</p></>
+        :<><p className="font-mono text-xs uppercase tracking-wider text-accent">Stage {r.current+1} of {r.stages.length} · {r.doneTasks}/{r.tasks.length} tasks</p><p className="font-display text-xl font-semibold text-ink">{r.stages[r.current].t}</p><p className="text-muted">Next: {next.title}</p></>}</div>
+      {finished?<button onClick={()=>go('spickzettel')} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 font-medium text-on-accent">Open Spickzettel<LuArrowRight aria-hidden className="size-4"/></button>
+      :<button onClick={()=>go(next.tab,{verb:next.verb})} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 font-medium text-on-accent">Continue<LuArrowRight aria-hidden className="size-4"/></button>}
+    </div>
+    <ol className="relative space-y-3 before:absolute before:left-[1.15rem] before:top-4 before:bottom-4 before:w-0.5 before:bg-line">{r.stages.map((x,k)=>{const isOpen=open.has(k),cur=k===r.current;
+      return <li key={x.t} className="relative pl-11">
+        <span aria-hidden className={`absolute left-0 top-3 grid size-[2.3rem] place-items-center rounded-full border-2 font-mono text-sm font-semibold ${x.complete?'border-accent bg-accent text-on-accent':cur?'border-accent bg-surface text-accent':'border-line bg-surface text-muted'}`}>{x.complete?<LuCheck className="size-4"/>:k+1}</span>
+        <div className={`panel ${cur?'ring-2 ring-accent/40':''}`}>
+          <button aria-expanded={isOpen} onClick={()=>toggle(k)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+            <span className="min-w-0"><span className="block font-display text-lg font-semibold text-ink">{x.t}</span><span className="block text-sm text-muted">{x.en}</span></span>
+            <span className="flex shrink-0 items-center gap-2"><span className={`font-mono text-sm ${x.complete?'text-accent':'text-muted'}`}>{x.n}/{x.tasks.length}</span><LuChevronDown aria-hidden className={`size-4 text-muted transition-transform ${isOpen?'rotate-180':''}`}/></span></button>
+          {isOpen?<ul className="divide-y divide-line border-t border-line px-4">{x.tasks.map(t=>{const ok=t.done>=t.total;return <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-3">
+            {t.manual?<button aria-pressed={ok} aria-label={ok?`Mark "${t.title}" as not done`:`Mark "${t.title}" as done`} onClick={()=>mark(t.id,!ok)} className="shrink-0">{ok?<LuCircleCheck aria-hidden className="size-5 text-accent"/>:<LuCircle aria-hidden className="size-5 text-line-strong hover:text-accent"/>}</button>
+              :ok?<LuCircleCheck aria-hidden className="size-5 shrink-0 text-accent"/>:<LuCircle aria-hidden className="size-5 shrink-0 text-line-strong"/>}
+            <span className="min-w-0 flex-1"><span className={`block ${ok?'text-muted line-through decoration-1':'text-ink'}`}>{t.title}</span><span className="block text-[13px] text-muted">{t.hint}</span></span>
+            {t.total>1?<span className="w-28"><span className="flex justify-between font-mono text-[11px] text-muted"><span>{Math.min(t.done,t.total)}</span><span>{t.total}</span></span><span className="mt-0.5 block h-1.5 rounded-full bg-accent-soft"><span className="block h-1.5 rounded-full bg-accent" style={{width:`${Math.min(1,t.done/t.total)*100}%`}}/></span></span>:null}
+            <button data-hue={HUE[t.tab]} onClick={()=>go(t.tab,{verb:t.verb})} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm text-accent hover:border-accent">Open<LuArrowRight aria-hidden className="size-3.5"/></button>
+          </li>})}</ul>:null}
+        </div></li>})}</ol>
+    <p className="mt-4 text-sm text-muted">Tasks with a circle you can tap are reading tasks: tick them yourself. Everything else ticks when you finish it in its tab.</p>
+  </section>;
+}
+
+/* ---------- Spickzettel: one-page refresher ---------- */
+function Cheat({lesson,go}){
+  const [hide,setHide]=useState(false);
+  const en=t=>hide?<span className="select-none rounded bg-line/70 text-transparent">{t}</span>:t;
+  const box=(title,children,cls='')=><section className={`panel min-w-0 break-inside-avoid p-4 ${cls}`}><h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-accent">{title}</h3>{children}</section>;
+  const g=a=>lesson.nouns.filter(n=>n.art===a);
+  return <section><Head de="Spickzettel" title="The whole video on one page · hide English to test yourself"/>
+    <div className="mb-4 flex flex-wrap gap-2">
+      <button aria-pressed={hide} onClick={()=>setHide(h=>!h)} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink hover:border-muted">{hide?<LuEye aria-hidden className="size-4"/>:<LuEyeOff aria-hidden className="size-4"/>}{hide?'Show English':'Hide English'}</button>
+      <button data-hue="blue" onClick={()=>go('srs')} className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent"><LuPlay aria-hidden className="size-4"/>Review due cards</button>
+    </div>
+    <div className="gap-4 space-y-4 lg:columns-2 [&>section]:mb-4">
+      {lesson.cheat?box('Das Wichtigste',<ol className="list-decimal space-y-1.5 pl-5 text-ink">{lesson.cheat.map(c=><li key={c}>{c}</li>)}</ol>):null}
+      {box('Verben · er/sie/es · Präteritum · Perfekt',<ul className="space-y-0.5 text-sm">{lesson.verbs.map(v=><li key={v.inf} className="grid grid-cols-[9.5rem_1fr] gap-2"><span lang="de" className={`truncate font-semibold ${v.type==='irregular'?'text-accent':'text-ink'}`}>{v.inf}</span><span lang="de" className="min-w-0 font-mono text-[12.5px] text-muted">{v.pr[2]} · {v.pt[2]} · <span className={v.aux==='ist'?'font-semibold text-bad':''}>{v.aux}</span> {v.pp}</span></li>)}</ul>,'')}
+      {box('Nomen',<div className="space-y-2.5 text-sm">{['der','die','das'].map(a=><p key={a} lang="de" className="leading-7"><Chip cls={GENDER[a]}>{a}</Chip> {g(a).map((n,k)=><span key={n.w}>{k?<span className="text-line-strong"> · </span>:null}<span className="text-ink">{n.w}</span><span className="text-muted"> {n.p}</span></span>)}</p>)}</div>)}
+      {box('Sätze für den Schalter',<ul className="space-y-1.5 text-sm">{lesson.phrases.map(p=><li key={p.de}><span lang="de" className="font-medium text-ink">{p.de}</span> <span className="text-muted">{en(p.en)}</span></li>)}</ul>)}
+      {box('Grammatik in einer Zeile',<ul className="space-y-1.5 text-sm">{lesson.grammar.map(x=><li key={x.t}><span className="font-semibold text-ink">{x.t}:</span> <span lang="de" className="font-mono text-[12.5px] text-ink/85">{x.ex[0][0]}</span></li>)}</ul>)}
+      {box('Adjektive & Co.',<p lang="de" className="text-sm leading-7">{lesson.mods.map((m,k)=><span key={m.w}>{k?<span className="text-line-strong"> · </span>:null}<span className="font-medium text-ink">{m.w}</span> <span className="text-muted">{en(m.en)}</span></span>)}</p>)}
+      {box('Vorsicht',<ul className="space-y-1.5 text-sm">{lesson.mistakes.map(m=><li key={m.bad} className="flex gap-1.5"><LuCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-good"/><span lang="de" className="text-ink">{m.good}</span></li>)}</ul>)}
+    </div>
+    <p className="mt-2 text-sm text-muted">Colour key: <span className="font-semibold text-accent">irregular verb</span> · <span className="font-semibold text-bad">sein</span> in Perfekt</p>
   </section>;
 }
 
 /* ---------- shell ---------- */
 const ROOT=document.body?.dataset.root??'';
 const pageHref=l=>`${ROOT}lessons/${l.slug}.html`;
-const LESSON_TABS=[['verben','Verben',LuBookOpen],['training','Training',LuDumbbell],['redemittel','Redemittel',LuMessageSquare],['vokabeln','Nomen & Adj.',LuTag],['grammatik','Grammatik',LuGitBranch],['goethe','Goethe B2',LuFileCheck],['fehler','Fehler',LuTriangleAlert],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
-const HUE={verben:'indigo',training:'tangerine',redemittel:'teal',vokabeln:'rose',grammatik:'violet',goethe:'amber',fehler:'crimson',srs:'blue',fortschritt:'green',lektionen:'indigo'};
+const LESSON_TABS=[['roadmap','Roadmap',LuRoute],['spickzettel','Spickzettel',LuStickyNote],['verben','Verben',LuBookOpen],['training','Training',LuDumbbell],['redemittel','Redemittel',LuMessageSquare],['vokabeln','Nomen & Adj.',LuTag],['grammatik','Grammatik',LuGitBranch],['goethe','Goethe B2',LuFileCheck],['fehler','Fehler',LuTriangleAlert],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
+const HUE={roadmap:'indigo',spickzettel:'magenta',verben:'cyan',training:'tangerine',redemittel:'teal',vokabeln:'rose',grammatik:'violet',goethe:'amber',fehler:'crimson',srs:'blue',fortschritt:'green',lektionen:'indigo'};
 const HOME_TABS=[['lektionen','Lektionen',LuBookOpen],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
-const Meter=({label,value,max,note,hue})=><div data-hue={hue} className="min-w-0"><div className="flex items-baseline justify-between gap-2"><span className="text-[13px] text-muted">{label}</span><span className="font-mono text-sm tabular-nums whitespace-nowrap text-ink">{value}{max!=null?` / ${max}`:''}</span></div>
+const Meter=({label,value,max,note,hue,pct})=><div data-hue={hue} className="min-w-0"><div className="flex items-baseline justify-between gap-2"><span className="text-[13px] text-muted">{label}</span><span className="font-mono text-sm tabular-nums whitespace-nowrap text-ink">{value}{pct?'%':max!=null?` / ${max}`:''}</span></div>
   {max!=null?<div className="mt-1.5 h-2 rounded-full bg-accent-soft"><div className="h-2 rounded-full bg-accent" style={{width:`${value/max*100}%`}}/></div>:<div className="mt-1 text-xs text-muted">{note}</div>}</div>;
 function Home({state}){
   return <section><Head de="Lektionen" title="One dashboard per video · reviews and streak are shared"/>
-    <ul className="panel divide-y divide-line px-5">{LESSONS.map((l,i)=>{const s=stats(state,i);return <li key={l.id}><a href={pageHref(l)} className="grid gap-x-6 gap-y-2 py-4 hover:text-accent sm:grid-cols-[1fr_16rem]"><span className="min-w-0"><span className="font-mono text-xs text-accent">Lektion {String(i+1).padStart(2,'0')} · {l.series} · {l.length}</span><span className="block font-display text-lg font-semibold text-ink">{l.title}</span><span className="block text-sm text-muted">{l.topic}</span></span><span className="self-center"><Meter label="Cards started" value={s.seen} max={s.total}/></span></a></li>})}</ul></section>;
+    <ul className="panel divide-y divide-line px-5">{LESSONS.map((l,i)=>{const s=stats(state,i);return <li key={l.id}><a href={pageHref(l)} className="grid gap-x-6 gap-y-2 py-4 hover:text-accent sm:grid-cols-[1fr_16rem]"><span className="min-w-0"><span className="font-mono text-xs text-accent">Lektion {String(i+1).padStart(2,'0')} · {l.series} · {l.length}</span><span className="block font-display text-lg font-semibold text-ink">{l.title}</span><span className="block text-sm text-muted">{l.topic}</span></span><span className="self-center space-y-2"><Meter hue="indigo" pct label="Roadmap" value={roadmap(i,state).pct} max={100}/><Meter hue="blue" label="Cards started" value={s.seen} max={s.total}/></span></a></li>})}</ul></section>;
 }
 function App(){
   const [state,update]=useProgress();
   const slug=document.body?.dataset.lesson;
   const li=slug?LESSONS.findIndex(l=>l.slug===slug):null;
   const lesson=li==null?null:LESSONS[li], TABS=lesson?LESSON_TABS:HOME_TABS;
-  const start=()=>{const h=location.hash.slice(1);return TABS.some(t=>t[0]===h)?h:TABS[0][0]};
+  const start=()=>{const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h))return h;return lesson&&roadmap(li,state).current===-1?'spickzettel':TABS[0][0]};
   const [tab,setTab]=useState(start);
   useEffect(()=>{const on=()=>setTab(start());addEventListener('hashchange',on);return()=>removeEventListener('hashchange',on)},[]);
-  const go=k=>{setTab(k);location.hash=k};
+  const [focus,setFocus]=useState({});
+  const go=(k,opt={})=>{setFocus({...opt,n:Date.now()});setTab(k);location.hash=k;scrollTo(0,0)};
   const st=stats(state,li), used=state.newDay===dayStr()?state.newCount:0;
   return <div className="min-h-full bg-bg text-ink">
     <header className="border-b border-line bg-surface"><div aria-hidden className="stripe"/><div className="mx-auto max-w-6xl px-gutter pb-3 pt-6">
@@ -388,15 +485,15 @@ function App(){
           <h1 className="mt-1 font-display text-3xl font-bold text-balance text-ink">{lesson?lesson.title:'Easy German Wortbank'}</h1>
           {lesson?<a href={lesson.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-muted hover:text-accent"><LuExternalLink aria-hidden className="size-3.5"/>{lesson.series} · {lesson.length}</a>:null}</div>
         {LESSONS.length>1&&lesson?<div className="w-full min-w-0 sm:w-80"><label htmlFor="lesson" className="sr-only">Go to lesson</label><select id="lesson" value={li} onChange={e=>{location.href=pageHref(LESSONS[+e.target.value])}} className="w-full rounded-md border border-line bg-bg px-2 py-1.5 text-ink">{LESSONS.map((l,i)=><option key={l.id} value={i}>Lektion {String(i+1).padStart(2,'0')}: {l.title}</option>)}</select></div>:null}</div>
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-5">
-        <Meter hue="blue" label="Words mastered" value={st.wordsDone} max={st.words}/><Meter hue="teal" label="Phrases learned" value={st.phrasesDone} max={st.phrases}/><Meter hue="amber" label="B2 texts done" value={st.textsDone} max={st.texts}/>
+      <div className={`mt-4 grid grid-cols-2 gap-x-6 gap-y-3 ${lesson?'lg:grid-cols-6':'lg:grid-cols-5'}`}>
+        {lesson?<Meter hue="indigo" pct label="Roadmap" value={roadmap(li,state).pct} max={100}/>:null}<Meter hue="blue" label="Words mastered" value={st.wordsDone} max={st.words}/><Meter hue="teal" label="Phrases learned" value={st.phrasesDone} max={st.phrases}/><Meter hue="amber" label="B2 texts done" value={st.textsDone} max={st.texts}/>
         <Meter hue="tangerine" label="SRS streak" value={`${st.streak} ${st.streak===1?'day':'days'}`} note={st.streak?'keep it going':'review a card to start'}/>
-        <button data-hue="blue" onClick={()=>go('srs')} className="col-span-2 flex items-center justify-center gap-2 self-center rounded-md bg-accent px-3 py-2 font-medium text-on-accent lg:col-span-1"><LuPlay aria-hidden className="size-4"/>Review cards</button>
+        <button data-hue="blue" onClick={()=>go('srs')} className={`col-span-2 flex items-center justify-center gap-2 self-center rounded-md bg-accent px-3 py-2 font-medium text-on-accent lg:col-span-1 ${lesson?'col-span-1':''}`}><LuPlay aria-hidden className="size-4"/>Review cards</button>
       </div></div>
-      <nav aria-label="Sections" className="mx-auto max-w-6xl overflow-x-auto px-gutter"><div className="flex w-max gap-1">{TABS.map(([k,t,I])=><button key={k} data-hue={HUE[k]} aria-current={tab===k?'page':undefined} onClick={()=>go(k)} className={`flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-3 py-2.5 text-sm ${tab===k?'border-accent font-semibold text-ink':'border-transparent text-muted hover:text-ink'}`}><I aria-hidden className="size-4 text-accent"/>{t}</button>)}</div></nav>
+      <nav aria-label="Sections" className="mx-auto max-w-6xl overflow-x-auto px-gutter"><div className="flex w-max gap-1">{TABS.map(([k,t,I])=><button key={k} data-hue={HUE[k]} aria-current={tab===k?'page':undefined} onClick={()=>go(k)} className={`flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-2.5 py-2.5 text-sm ${tab===k?'border-accent font-semibold text-ink':'border-transparent text-muted hover:text-ink'}`}><I aria-hidden className="size-4 text-accent"/>{t}</button>)}</div></nav>
     </header>
     <main data-hue={HUE[tab]} className="mx-auto max-w-6xl px-gutter py-8">
-      {tab==='lektionen'?<Home state={state}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='training'?<Training key={li} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Practice lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
+      {tab==='lektionen'?<Home state={state}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='roadmap'?<Roadmap li={li} state={state} update={update} go={go}/>:tab==='spickzettel'?<Cheat lesson={lesson} go={go}/>:tab==='training'?<Training key={focus.n||0} start={focus.verb} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Practice lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
     </main>
   </div>;
 }
