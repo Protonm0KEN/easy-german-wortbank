@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@theme inline{
+ --color-bg:var(--bg);--color-surface:var(--surface);--color-ink:var(--ink);--color-muted:var(--muted);--color-line:var(--line);--color-line-strong:var(--line-strong);
+ --color-accent:var(--accent);--color-accent-soft:var(--accent-soft);--color-on-accent:var(--on-accent);
+ --color-good:var(--good);--color-good-soft:var(--good-soft);--color-bad:var(--bad);--color-bad-soft:var(--bad-soft);--color-warn:var(--warn);--color-warn-soft:var(--warn-soft);
+ --color-der:var(--der);--color-der-soft:var(--der-soft);--color-die:var(--die);--color-die-soft:var(--die-soft);--color-das:var(--das);--color-das-soft:var(--das-soft);
+ --font-display:var(--display);--font-sans:var(--body);--font-mono:var(--data);
+ --spacing-gutter:1rem;
+}

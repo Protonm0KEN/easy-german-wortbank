@@ -1,0 +1,27 @@
+/* Layout: a working desk. Masthead with progress on top, one dense tab of tables or practice below, rules instead of cards. */
+:root{
+ --bg:#f2f4f1;--surface:#fbfcfa;--ink:#17201d;--muted:#5a6863;--line:#d6ddd8;--line-strong:#a9b5af;
+ --accent:#0c6a5a;--accent-soft:#d8ece6;--on-accent:#f6fbf9;
+ --good:#1c7a3f;--good-soft:#dcf0e2;--bad:#b3261e;--bad-soft:#f9e0dd;--warn:#a06400;--warn-soft:#f8ead0;
+ --der:#1f5fae;--der-soft:#dbe8f7;--die:#b02a4f;--die-soft:#f8dfe6;--das:#2e7d4f;--das-soft:#dcefe2;
+ --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;--data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --bg:#101614;--surface:#161e1b;--ink:#e6ece9;--muted:#98a8a1;--line:#2b3733;--line-strong:#4d5d57;
+ --accent:#4cc3a8;--accent-soft:#17352e;--on-accent:#06201a;
+ --good:#62cf8b;--good-soft:#16321f;--bad:#f28b82;--bad-soft:#3b1b19;--warn:#e7b35c;--warn-soft:#37290f;
+ --der:#86b6ee;--der-soft:#172a42;--die:#f09ab3;--die-soft:#3c1a26;--das:#7fce9c;--das-soft:#17321f;color-scheme:dark}}
+:root[data-theme="dark"]{
+ --bg:#101614;--surface:#161e1b;--ink:#e6ece9;--muted:#98a8a1;--line:#2b3733;--line-strong:#4d5d57;
+ --accent:#4cc3a8;--accent-soft:#17352e;--on-accent:#06201a;
+ --good:#62cf8b;--good-soft:#16321f;--bad:#f28b82;--bad-soft:#3b1b19;--warn:#e7b35c;--warn-soft:#37290f;
+ --der:#86b6ee;--der-soft:#172a42;--die:#f09ab3;--die-soft:#3c1a26;--das:#7fce9c;--das-soft:#17321f;color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+#root{min-height:100%}
+.px-gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+circle:focus{outline:none}
+circle:focus-visible{stroke:var(--accent);stroke-width:3}
+button:not(:disabled){cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
