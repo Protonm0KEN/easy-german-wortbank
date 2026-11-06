@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useMemo,useRef,useCallback} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle,LuRoute,LuStickyNote,LuCircle,LuCircleCheck,LuArrowRight,LuEye,LuEyeOff,LuTrophy,LuVolume2,LuVolumeX,LuSparkles,LuTarget,LuCirclePlay,LuRefreshCw} from 'react-icons/lu';
+import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle,LuRoute,LuStickyNote,LuCircle,LuCircleCheck,LuArrowRight,LuEye,LuEyeOff,LuTrophy,LuVolume2,LuVolumeX,LuSparkles,LuTarget,LuCirclePlay,LuRefreshCw,LuTimer,LuLanguages,LuBlend} from 'react-icons/lu';
 import {LESSONS} from './lessons/index.js';
 
 /* ---------- dates and spaced repetition ---------- */
@@ -24,15 +24,19 @@ export function bumpStreak(s,today){
 }
 
 /* ---------- master deck across all lessons ---------- */
+/* ---------- translation language: English, Russian or both ---------- */
+const LANG_KEY='eg-lang';let LANG='both';try{LANG=localStorage.getItem(LANG_KEY)||'both'}catch{}
+LESSONS.forEach(l=>{const m=l.ru||{},g=l.img||{};[...l.nouns,...l.mods].forEach(x=>{x.ru=m[x.w];x.img=g[x.w]});l.verbs.forEach(x=>{x.ru=m[x.inf];x.img=g[x.inf]});l.phrases.forEach(x=>x.ru=m[x.de])});
+const tr=x=>!x.ru||LANG==='en'?x.en:LANG==='ru'?x.ru:`${x.en} · ${x.ru}`;
 const DECK=LESSONS.flatMap((l,li)=>[
-  ...l.nouns.map(x=>({id:`${l.id}:n:${x.w}`,kind:'word',front:`${x.art} ${x.w}`,back:x.en,sub:x.pl?`Plural: die ${x.pl}`:'Normally singular',ex:x.ex,c:x.c,lesson:li,key:x.w,art:x.art})),
-  ...l.mods.map(x=>({id:`${l.id}:m:${x.w}`,kind:'word',front:x.w,back:x.en,sub:x.pair||x.comp||x.type,ex:x.ex,c:x.c,lesson:li,key:x.w})),
-  ...l.verbs.map(x=>({id:`${l.id}:v:${x.inf}`,kind:'verb',front:x.inf,back:x.en,sub:`${x.pr[2]} · ${x.pt[2]} · ${x.aux} ${x.refl?'sich ':''}${x.pp}`,ex:x.ex,c:x.c,lesson:li,key:clean(x.inf)})),
-  ...l.phrases.map(x=>({id:`${l.id}:p:${x.de}`,kind:'phrase',front:x.de,back:x.en,sub:x.note,c:x.c,lesson:li,key:x.de})),
+  ...l.nouns.map(x=>({id:`${l.id}:n:${x.w}`,kind:'word',front:`${x.art} ${x.w}`,back:tr(x),sub:x.pl?`Plural: die ${x.pl}`:'Normally singular',ex:x.ex,c:x.c,lesson:li,key:x.w,art:x.art,img:x.img})),
+  ...l.mods.map(x=>({id:`${l.id}:m:${x.w}`,kind:'word',front:x.w,back:tr(x),sub:x.pair||x.comp||x.type,ex:x.ex,c:x.c,lesson:li,key:x.w,img:x.img})),
+  ...l.verbs.map(x=>({id:`${l.id}:v:${x.inf}`,kind:'verb',front:x.inf,back:tr(x),sub:`${x.pr[2]} · ${x.pt[2]} · ${x.aux} ${x.refl?'sich ':''}${x.pp}`,ex:x.ex,c:x.c,lesson:li,key:clean(x.inf),img:x.img})),
+  ...l.phrases.map(x=>({id:`${l.id}:p:${x.de}`,kind:'phrase',front:x.de,back:tr(x),sub:x.note,c:x.c,lesson:li,key:x.de})),
 ]);
 
 /* ---------- persistence: this browser, shared by every page of the site ---------- */
-const EMPTY={cards:{},texts:{},drills:{},roadmap:{},learned:{},goal:30,learnDay:null,learnCount:0,streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
+const EMPTY={mix:null,time:{},days:{},finished:{},cards:{},texts:{},drills:{},roadmap:{},learned:{},goal:30,learnDay:null,learnCount:0,streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
 const LS='eg-wortbank-v1';
 const readLocal=()=>{try{return JSON.parse(localStorage.getItem(LS))}catch{return null}};
 const writeLocal=s=>{try{localStorage.setItem(LS,JSON.stringify(s))}catch{}};
@@ -59,7 +63,7 @@ const REFL={akk:['mich','dich','sich','uns','euch','sich'],dat:['mir','dir','sic
 const perfekt=(v,i)=>`${AUX[v.aux][i]} ${v.refl?REFL[v.refl][i]+' ':''}${v.pp}`;
 function Verbs({lesson}){
   const [f,setF]=useState('all'),[q,setQ]=useState(''),[open,setOpen]=useState(()=>new Set([lesson.verbs[0].inf])),[all,setAll]=useState(false);
-  const list=lesson.verbs.filter(v=>(f==='all'||(f==='separable'?v.sep:v.type===f))&&(`${v.inf} ${v.en}`.toLowerCase().includes(q.toLowerCase())));
+  const list=lesson.verbs.filter(v=>(f==='all'||(f==='separable'?v.sep:v.type===f))&&(`${v.inf} ${tr(v)}`.toLowerCase().includes(q.toLowerCase())));
   const toggle=k=>setOpen(o=>{const n=new Set(o);n.has(k)?n.delete(k):n.add(k);return n});
   return <section>
     <Head de="Verben" title={`${lesson.verbs.length} verbs · tap a row for every form`}/>
@@ -70,8 +74,8 @@ function Verbs({lesson}){
     <div className="panel divide-y divide-line px-4">
       {list.map(v=>{const isOpen=all||open.has(v.inf);return <div key={v.inf}>
         <button aria-expanded={isOpen} onClick={()=>toggle(v.inf)} className="grid w-full grid-cols-[1fr_auto] items-center gap-x-3 py-3.5 text-left hover:text-accent sm:grid-cols-[13rem_1fr_auto]">
-          <span className="min-w-0 font-semibold text-ink">{v.inf}<span className="ml-2 font-normal text-muted sm:hidden">{v.en}</span></span>
-          <span className="col-start-1 row-start-2 min-w-0 font-mono text-[13px] text-muted sm:col-start-2 sm:row-start-1">{v.pr[2]} · {v.pt[2]} · <span className={v.aux==='ist'?'font-semibold text-accent':''}>{v.aux}</span> {v.refl?'sich ':''}{v.pp}<span className="ml-3 hidden font-sans text-sm lg:inline">{v.en}</span></span>
+          <span className="min-w-0 font-semibold text-ink">{v.inf}<span className="ml-2 font-normal text-muted sm:hidden">{tr(v)}</span></span>
+          <span className="col-start-1 row-start-2 min-w-0 font-mono text-[13px] text-muted sm:col-start-2 sm:row-start-1">{v.pr[2]} · {v.pt[2]} · <span className={v.aux==='ist'?'font-semibold text-accent':''}>{v.aux}</span> {v.refl?'sich ':''}{v.pp}<span className="ml-3 hidden font-sans text-sm lg:inline">{tr(v)}</span></span>
           <span className="col-start-2 row-span-2 row-start-1 flex items-center gap-1.5 sm:col-start-3 sm:row-span-1">
             <span className="hidden sm:inline"><Chip>{v.type}</Chip></span>{v.sep?<span className="hidden sm:inline"><Chip cls="bg-accent-soft text-accent">trennbar</Chip></span>:null}
             <LuChevronDown aria-hidden className={`size-4 text-muted transition-transform ${isOpen?'rotate-180':''}`}/></span>
@@ -108,7 +112,7 @@ function Training({lesson,state,update,start,only,startTense}){
   const set=(k,val)=>setAns(a=>({...a,[k]:val}));
   const field=(k,props)=><input id={`drill-${k}`} value={ans[k]||''} onFocus={e=>active.current={k,el:e.target}} onChange={e=>set(k,e.target.value)} autoComplete="off" spellCheck="false" lang="de" {...props} className={`w-full min-w-0 rounded-md border bg-surface px-2.5 py-1.5 text-ink ${props?.className||''} ${shown[k.split('.')[0]]?(props?.ok||acc[k]?'border-good':'border-bad'):'border-line'}`}/>;
   const insert=ch=>{const a=active.current;if(!a)return;const el=a.el,cur=ans[a.k]||'',p=el.selectionStart??cur.length,q=el.selectionEnd??p;set(a.k,cur.slice(0,p)+ch+cur.slice(q));requestAnimationFrame(()=>{el.focus();el.setSelectionRange(p+1,p+1)})};
-  const okT=meaningOk(ans.t||'',v.en);
+  const okT=meaningOk(ans.t||'',v.en)||(!!v.ru&&meaningOk(ans.t||'',v.ru));
   const conjOk=k=>fold(ans[`c${tense}.${k}`]||'')===fold(formOf(v,tense,k));
   const sentOk=k=>sents[k][1].some(x=>fold(x)===fold(ans[`s.${k}`]||''));
   const record=patch=>update(s=>({...s,drills:{...(s.drills||{}),[id]:{...(s.drills?.[id]||{}),...patch,day:dayStr()}}}));
@@ -134,9 +138,9 @@ function Training({lesson,state,update,start,only,startTense}){
       <div className="flex flex-wrap items-end justify-between gap-3"><p lang="de" className="font-display text-4xl font-bold text-ink">{v.inf}</p>
         <div className="flex flex-wrap gap-1.5"><Chip>{v.type}</Chip>{v.sep?<Chip cls="bg-accent-soft text-accent">trennbar</Chip>:null}{v.refl?<Chip cls="bg-accent-soft text-accent">reflexiv, {v.refl==='akk'?'Akk.':'Dat.'}</Chip>:null}</div></div>
       <div role="group" aria-label="Insert special characters" className="flex flex-wrap items-center gap-1.5 text-sm text-muted">Insert:{UML.map(ch=><button key={ch} onMouseDown={e=>e.preventDefault()} onClick={()=>insert(ch)} className="w-8 rounded border border-line bg-surface py-0.5 font-mono text-ink hover:border-muted">{ch}</button>)}</div>
-      {step(1,'Translation',<div className="flex flex-wrap items-center gap-3"><div className="w-full sm:w-72">{field('t',{placeholder:'English meaning',lang:'en',ok:okT})}</div>
+      {step(1,'Translation',<div className="flex flex-wrap items-center gap-3"><div className="w-full sm:w-72">{field('t',{placeholder:LANG==='ru'?'Перевод':'English or Russian meaning',lang:'en',ok:okT})}</div>
         <button onClick={checkT} disabled={!ans.t} className={`${btn} disabled:opacity-40`}>Check</button><Verdict ok={okT} shown={shown.t} accepted={acc.t} onAccept={acceptT}/>
-        {shown.t?<p className="w-full text-sm text-muted">Answer: <span className="text-ink">{v.en}</span></p>:null}</div>)}
+        {shown.t?<p className="w-full text-sm text-muted">Answer: <span className="text-ink">{tr(v)}</span></p>:null}</div>)}
       {step(2,'Konjugation',<div>
         <div className="mb-3"><Filter label="Tense" value={tense} onChange={setTense} options={TENSES.map(([k,t])=>[k,`${t}${d[k]!=null?` ${d[k]}/6`:''}`])}/></div>
         <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">{PERSONS.map((p,k)=>{const key=`c${tense}.${k}`,show=shown['c'+tense];return <div key={key} className="grid grid-cols-[5.5rem_1fr] items-center gap-2"><label htmlFor={`drill-${key}`} className="text-sm text-muted">{p}</label>
@@ -159,7 +163,7 @@ function Phrases({lesson}){
   const cats=[...new Set(lesson.phrases.map(p=>p.cat))];
   return <section><Head de="Redemittel & Ausdrücke" title="Ready-made sentences, grouped by situation"/>
     <div className="grid items-start gap-5 lg:grid-cols-2">{cats.map(c=><div key={c} className="panel min-w-0 px-5 pt-4 pb-1"><h3 className="mb-1 font-mono text-xs uppercase tracking-wider text-accent">{c}</h3>
-      <ul className="divide-y divide-line">{lesson.phrases.filter(p=>p.cat===c).map(p=><li key={p.de} className="py-3"><p lang="de" className="font-semibold text-ink">{p.de}</p><p className="text-ink/80">{p.en}</p><p className="mt-1 text-[13px] text-muted">{p.note}</p></li>)}</ul></div>)}</div>
+      <ul className="divide-y divide-line">{lesson.phrases.filter(p=>p.cat===c).map(p=><li key={p.de} className="py-3"><p lang="de" className="font-semibold text-ink">{p.de}</p><p className="text-ink/80">{tr(p)}</p><p className="mt-1 text-[13px] text-muted">{p.note}</p></li>)}</ul></div>)}</div>
   </section>;
 }
 
@@ -167,15 +171,15 @@ function Phrases({lesson}){
 function Vocab({lesson}){
   const [f,setF]=useState('all'),[q,setQ]=useState('');
   const match=s=>s.toLowerCase().includes(q.toLowerCase());
-  const nouns=lesson.nouns.filter(x=>(f==='all'||x.art===f)&&match(`${x.w} ${x.en}`));
-  const mods=lesson.mods.filter(x=>match(`${x.w} ${x.en}`));
+  const nouns=lesson.nouns.filter(x=>(f==='all'||x.art===f)&&match(`${x.w} ${tr(x)}`));
+  const mods=lesson.mods.filter(x=>match(`${x.w} ${tr(x)}`));
   return <section><Head de="Nomen & Adjektive" title="Article, plural, example · colour shows gender"/>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><Filter label="Gender" value={f} onChange={setF} options={[['all','All'],['der','der'],['die','die'],['das','das']]}/><Search id="noun-search" value={q} onChange={setQ} ph="Search vocabulary"/></div>
     <div className="panel overflow-x-auto px-4 py-1"><table className="w-full min-w-[36rem] text-sm"><thead><tr className="border-b border-line text-left text-muted"><th scope="col" className="py-2.5 pr-3 font-normal">Nomen</th><th scope="col" className="py-2.5 pr-3 font-normal">Plural</th><th scope="col" className="py-2.5 pr-3 font-normal">English</th><th scope="col" className="py-2.5 font-normal">Beispiel</th></tr></thead>
-      <tbody>{nouns.map(x=><tr key={x.w} className="border-b border-line/60 align-top last:border-0"><td className="py-2.5 pr-3 whitespace-nowrap"><Chip cls={GENDER[x.art]}>{x.art}</Chip> <span className="font-medium text-ink">{x.w}</span></td><td className="py-2.5 pr-3 font-mono text-[13px] text-muted whitespace-nowrap">{x.pl?`die ${x.pl}`:'sg.'}</td><td className="py-2.5 pr-3 text-ink">{x.en}</td><td lang="de" className="py-2.5 text-muted">{x.ex}</td></tr>)}</tbody></table></div>
+      <tbody>{nouns.map(x=><tr key={x.w} className="border-b border-line/60 align-top last:border-0"><td className="py-2.5 pr-3 whitespace-nowrap"><span aria-hidden className="mr-1.5 inline-block w-6 text-center text-lg">{x.img}</span><Chip cls={GENDER[x.art]}>{x.art}</Chip> <span className="font-medium text-ink">{x.w}</span></td><td className="py-2.5 pr-3 font-mono text-[13px] text-muted whitespace-nowrap">{x.pl?`die ${x.pl}`:'sg.'}</td><td className="py-2.5 pr-3 text-ink">{tr(x)}</td><td lang="de" className="py-2.5 text-muted">{x.ex}</td></tr>)}</tbody></table></div>
     <h3 className="mt-9 mb-2 font-display text-xl font-semibold text-ink">Adjektive, Adverbien, Präpositionen</h3>
     <div className="panel overflow-x-auto px-4 py-1"><table className="w-full min-w-[36rem] text-sm"><thead><tr className="border-b border-line text-left text-muted"><th scope="col" className="py-2.5 pr-3 font-normal">Wort</th><th scope="col" className="py-2.5 pr-3 font-normal">English</th><th scope="col" className="py-2.5 pr-3 font-normal">Steigerung</th><th scope="col" className="py-2.5 font-normal">Verbindung</th></tr></thead>
-      <tbody>{mods.map(x=><tr key={x.w} className="border-b border-line/60 align-top"><td className="py-2.5 pr-3 whitespace-nowrap"><span className="font-medium text-ink">{x.w}</span> <Chip>{x.type}</Chip></td><td className="py-2.5 pr-3 text-ink">{x.en}</td><td className="py-2.5 pr-3 font-mono text-[13px] text-muted">{x.comp||'not compared'}</td><td lang="de" className="py-2.5 text-muted">{x.pair||x.ex}</td></tr>)}</tbody></table></div>
+      <tbody>{mods.map(x=><tr key={x.w} className="border-b border-line/60 align-top"><td className="py-2.5 pr-3 whitespace-nowrap"><span className="font-medium text-ink">{x.w}</span> <Chip>{x.type}</Chip></td><td className="py-2.5 pr-3 text-ink">{tr(x)}</td><td className="py-2.5 pr-3 font-mono text-[13px] text-muted">{x.comp||'not compared'}</td><td lang="de" className="py-2.5 text-muted">{x.pair||x.ex}</td></tr>)}</tbody></table></div>
   </section>;
 }
 
@@ -269,7 +273,7 @@ function SRS({state,update,li}){
     {card?<div className="mx-auto max-w-xl">
       <button onClick={()=>setFlip(f=>!f)} aria-label={flip?'Show the German side':'Show the answer'} className="block min-h-64 w-full rounded-lg border border-line bg-surface p-6 text-left shadow-sm">
         <span className="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-muted"><span>{card.kind} · Box {prev.box}</span><span>{LESSONS[card.lesson].clusters[card.c]}</span></span>
-        <span lang="de" className="mt-6 block text-center font-display text-3xl font-semibold text-balance text-ink">{card.art?<span className={card.art==='der'?'text-der':card.art==='die'?'text-die':'text-das'}>{card.art} </span>:null}{card.art?card.front.replace(card.art+' ',''):card.front}</span>
+        {card.img?<span aria-hidden className="mt-4 block text-center text-5xl">{card.img}</span>:null}<span lang="de" className="mt-6 block text-center font-display text-3xl font-semibold text-balance text-ink">{card.art?<span className={card.art==='der'?'text-der':card.art==='die'?'text-die':'text-das'}>{card.art} </span>:null}{card.art?card.front.replace(card.art+' ',''):card.front}</span>
         {flip?<span className="mt-4 block border-t border-line pt-4 text-center"><span className="block text-xl text-ink">{card.back}</span><span lang="de" className="mt-1 block font-mono text-[13px] text-muted">{card.sub}</span>{card.ex?<span lang="de" className="mt-3 block text-ink/80">{card.ex}</span>:null}</span>
         :<span className="mt-10 block text-center text-sm text-muted">Tap to show the answer</span>}
       </button>
@@ -353,8 +357,9 @@ function Progress({state,update,li}){
     </div>
     {li!=null?<div className="panel mt-4 p-5"><h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-accent">Wortnetz</h3><Graph state={state} li={li}/></div>:null}
     <div className="panel mt-4 p-5"><h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-accent">Lessons</h3>
-    <div className="overflow-x-auto"><table className="w-full min-w-[30rem] text-sm"><thead><tr className="border-b border-line text-left text-muted"><th scope="col" className="py-1 pr-3 font-normal">Video</th><th scope="col" className="py-1 pr-3 text-right font-normal">Entries</th><th scope="col" className="py-1 pr-3 text-right font-normal">Started</th><th scope="col" className="py-1 pr-3 text-right font-normal">Texts done</th><th scope="col" className="py-1 text-right font-normal">Roadmap</th></tr></thead>
-      <tbody>{LESSONS.map((l,i)=>{const cs=DECK.filter(c=>c.lesson===i);return <tr key={l.id} className="border-b border-line/60"><td className="py-2.5 pr-3"><a className="text-accent underline underline-offset-2" href={pageHref(l)}>{l.title}</a></td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.length}</td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.filter(c=>state.cards[c.id]).length}</td><td className="py-1.5 text-right font-mono text-ink">{l.texts.filter(t=>state.texts[t.id]).length} / {l.texts.length}</td><td className="py-2.5 text-right font-mono text-ink">{roadmap(i,state).pct}%</td></tr>})}</tbody></table></div></div>
+    <div className="overflow-x-auto"><table className="w-full min-w-[30rem] text-sm"><thead><tr className="border-b border-line text-left text-muted"><th scope="col" className="py-1 pr-3 font-normal">Video</th><th scope="col" className="py-1 pr-3 text-right font-normal">Entries</th><th scope="col" className="py-1 pr-3 text-right font-normal">Started</th><th scope="col" className="py-1 pr-3 text-right font-normal">Texts done</th><th scope="col" className="py-1 pr-3 text-right font-normal">Roadmap</th><th scope="col" className="py-1 text-right font-normal">Time</th></tr></thead>
+      <tbody>{LESSONS.map((l,i)=>{const cs=DECK.filter(c=>c.lesson===i);return <tr key={l.id} className="border-b border-line/60"><td className="py-2.5 pr-3"><a className="text-accent underline underline-offset-2" href={pageHref(l)}>{l.title}</a></td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.length}</td><td className="py-2.5 pr-3 text-right font-mono text-ink">{cs.filter(c=>state.cards[c.id]).length}</td><td className="py-1.5 text-right font-mono text-ink">{l.texts.filter(t=>state.texts[t.id]).length} / {l.texts.length}</td><td className="py-2.5 pr-3 text-right font-mono text-ink">{roadmap(i,state).pct}%</td><td className="py-2.5 text-right font-mono text-ink">{fmtT(state.time?.[l.id])}</td></tr>})}</tbody></table></div></div>
+    <div className="mt-4"><Pace state={state} update={update}/></div>
     <Backup state={state} update={update}/>
   </section>;
 }
@@ -379,12 +384,15 @@ function buildStep(c,type){
   if(type==='perfekt'){const v=verbOf(c),r=v.refl?'sich ':'',pp=v.pp;
     const alt=[`${v.aux==='hat'?'ist':'hat'} ${r}${pp}`,`${v.aux} ${r}${pp.startsWith('ge')?pp.slice(2):'ge'+pp}`,`${v.aux} ${r}${pp.endsWith('en')?pp.slice(0,-2)+'t':pp.replace(/t$/,'en')}`];
     const ok=perfektOf(v);return {options:shuffle([...new Set([ok,...alt])]),answer:ok}}
+  if(type==='mistake')return {options:shuffle([c.m.bad,c.m.good]),answer:c.m.good};
   if(type==='tiles')return {tiles:shuffle(c.front.split(' ').map((x,k)=>({x,k}))),answer:c.front};
   return {};
 }
 const SpeakBtn=({text,size='size-5'})=><button type="button" aria-label="Play pronunciation" onClick={e=>{e.stopPropagation();say(text)}} className="rounded-full p-1.5 text-accent hover:bg-accent-soft"><LuVolume2 aria-hidden className={size}/></button>;
-function LearnSession({ids,state,update,onBack,next,onNext}){
-  const items=useMemo(()=>ids.map(id=>DECK.find(c=>c.id===id)),[ids.join('|')]);
+function LearnSession({ids,cards,review,state,update,onBack,next,onNext,onFinish}){
+  const items=useMemo(()=>cards||ids.map(id=>DECK.find(c=>c.id===id)),[]);
+  const S=c=>review?[c.rtype]:STEPS(c);
+  const [shown,setShown]=useState(false);
   const progRef=useRef(items.map(()=>({lvl:0,seen:-1,miss:0})));
   const [,force]=useState(0);
   const turn=useRef(0),timer=useRef(null);
@@ -392,23 +400,25 @@ function LearnSession({ids,state,update,onBack,next,onNext}){
   const [typed,setTyped]=useState(''),[picked,setPicked]=useState([]),[chosen,setChosen]=useState(null);
   const [sound,setSound]=useState(audioOn);
   const inputRef=useRef(null);
-  const pick=last=>{const p=progRef.current.map((x,i)=>({...x,i})).filter(x=>x.lvl<STEPS(items[x.i]).length);if(!p.length)return null;
+  const pick=last=>{const p=progRef.current.map((x,i)=>({...x,i})).filter(x=>x.lvl<S(items[x.i]).length);if(!p.length)return null;
+    if(review){const pool=p.filter(x=>x.i!==last);return (pool.length?pool:p).sort((a,b)=>a.seen-b.seen)[0].i}
     const learning=p.filter(x=>x.lvl>0),fresh=p.filter(x=>x.lvl===0);
     if(fresh.length&&learning.length<3)return fresh[0].i;
     const pool=learning.filter(x=>x.i!==last);return (pool.length?pool:learning).sort((a,b)=>a.seen-b.seen)[0].i};
-  const show=last=>{clearTimeout(timer.current);const i=pick(last);setRes(null);setTyped('');setPicked([]);setChosen(null);
+  const show=last=>{clearTimeout(timer.current);const i=pick(last);setRes(null);setTyped('');setPicked([]);setChosen(null);setShown(false);
     if(i==null){setStep({done:true});return}
-    const c=items[i],type=STEPS(c)[progRef.current[i].lvl];turn.current++;progRef.current[i].seen=turn.current;
-    setStep({i,c,type,...buildStep(c,type)});if(type==='meet'||type==='recog')setTimeout(()=>say(c.front),120)};
+    const c=items[i],type=S(c)[progRef.current[i].lvl];turn.current++;progRef.current[i].seen=turn.current;
+    setStep({i,c,type,...buildStep(c,type)});if((type==='meet'||type==='recog')&&c.front)setTimeout(()=>say(c.front),120)};
   useEffect(()=>{show(-1);return()=>clearTimeout(timer.current)},[]);
   useEffect(()=>{if(step?.type==='type')inputRef.current?.focus()},[step]);
   const commit=id=>update(s=>{const today=dayStr(),first=!s.learned?.[id],b=bumpStreak(s,today);
     return {...b,learned:{...(s.learned||{}),[id]:today},cards:s.cards[id]?s.cards:{...s.cards,[id]:{box:0,reps:1,due:addDays(today,1),last:today}},learnDay:today,learnCount:(s.learnDay===today?s.learnCount||0:0)+(first?1:0)}});
-  const answer=(ok,note)=>{if(res||!step||step.done)return;const {i,c,type}=step,x=progRef.current[i],max=STEPS(c).length;
-    x.lvl=ok?x.lvl+1:Math.max(1,x.lvl-1);if(!ok)x.miss++;force(n=>n+1);
-    if(ok&&x.lvl>=max)commit(c.id);
+  const commitReview=(c,miss)=>update(s=>{const today=dayStr(),b=bumpStreak(s,today);return c.kind==='grammar'||c.kind==='mistake'?b:{...b,cards:{...s.cards,[c.id]:rate(s.cards[c.id],miss?'again':'good',today)}}});
+  const answer=(ok,note)=>{if(res||!step||step.done)return;const {i,c,type}=step,x=progRef.current[i],max=S(c).length;
+    x.lvl=review?(ok?1:0):ok?x.lvl+1:Math.max(1,x.lvl-1);if(!ok)x.miss++;force(n=>n+1);
+    if(ok&&x.lvl>=max)(review?commitReview(c,x.miss):commit(c.id));
     if(type==='meet'){show(i);return}
-    setRes({ok,note});if(type!=='recog')say(c.front);
+    setRes({ok,note});if(type!=='recog'&&c.front)say(c.front);
     if(ok)timer.current=setTimeout(()=>show(i),note?1600:850)};
   const choose=o=>{if(res)return;setChosen(o);answer(o===step.answer)};
   const submitType=()=>{if(!typed.trim()||res)return;const want=step.c.front,a=nrm(typed),b=nrm(want);
@@ -421,16 +431,16 @@ function LearnSession({ids,state,update,onBack,next,onNext}){
     if(e.key==='Enter'){if(step.type==='meet'){e.preventDefault();answer(true)}else if(res&&!res.ok){e.preventDefault();show(step.i)}else if(step.type==='type'&&!res){e.preventDefault();submitType()}}
     if(step.options&&!res&&/^[1-4]$/.test(e.key)&&e.target.tagName!=='INPUT'){const o=step.options[+e.key-1];if(o)choose(o)}};
     addEventListener('keydown',on);return()=>removeEventListener('keydown',on)});
-  const total=items.reduce((a,c)=>a+STEPS(c).length,0),now=progRef.current.reduce((a,x)=>a+x.lvl,0);
-  const doneN=progRef.current.filter((x,i)=>x.lvl>=STEPS(items[i]).length).length;
+  const total=items.reduce((a,c)=>a+S(c).length,0),now=progRef.current.reduce((a,x)=>a+x.lvl,0);
+  const doneN=progRef.current.filter((x,i)=>x.lvl>=S(items[i]).length).length;
   const toggleSound=()=>{const v=!sound;setSound(v);try{localStorage.setItem(AUDIO_KEY,v?'on':'off')}catch{}};
   const bar=<div className="mb-4 flex items-center gap-3"><div className="h-2.5 flex-1 rounded-full bg-accent-soft"><div className="h-2.5 rounded-full bg-accent transition-all" style={{width:`${now/total*100}%`}}/></div><span className="font-mono text-sm tabular-nums text-muted">{doneN}/{items.length}</span>
     <button onClick={toggleSound} aria-pressed={sound} aria-label={sound?'Turn sound off':'Turn sound on'} className="rounded-md p-1 text-muted hover:text-ink">{sound?<LuVolume2 aria-hidden className="size-5"/>:<LuVolumeX aria-hidden className="size-5"/>}</button></div>;
   if(!step)return null;
-  if(step.done){const hard=items.filter((c,i)=>progRef.current[i].miss>0);
-    return <div className="mx-auto max-w-xl"><div className="panel p-6 text-center"><LuSparkles aria-hidden className="mx-auto size-8 text-accent"/><p className="mt-2 font-display text-2xl font-semibold text-ink">Paket geschafft</p>
-      <p className="mt-1 text-muted">{items.length} {items[0].kind==='phrase'?'phrases':'items'} learned. They come back in SRS tomorrow.</p>
-      {hard.length?<div className="mt-4 rounded-lg bg-accent-soft/60 p-3 text-left"><p className="mb-1 font-mono text-xs uppercase tracking-wider text-accent">Watch these</p><ul className="space-y-0.5 text-sm">{hard.map(c=><li key={c.id} lang="de"><span className="font-medium text-ink">{c.front}</span> <span className="text-muted">{c.back}</span></li>)}</ul></div>:null}
+  if(step.done){const hard=items.filter((c,i)=>progRef.current[i].miss>0);if(review&&onFinish&&!step.reported){step.reported=true;setTimeout(onFinish,0)}
+    return <div className="mx-auto max-w-xl"><div className="panel p-6 text-center"><LuSparkles aria-hidden className="mx-auto size-8 text-accent"/><p className="mt-2 font-display text-2xl font-semibold text-ink">{review?'Tagesmix geschafft':'Paket geschafft'}</p>
+      <p className="mt-1 text-muted">{review?`${items.length} items refreshed, ${items.length-hard.length} right first time. Missed cards come back tomorrow.`:`${items.length} ${items[0].kind==='phrase'?'phrases':'items'} learned. They come back in SRS tomorrow.`}</p>
+      {hard.length?<div className="mt-4 rounded-lg bg-accent-soft/60 p-3 text-left"><p className="mb-1 font-mono text-xs uppercase tracking-wider text-accent">Watch these</p><ul className="space-y-0.5 text-sm">{hard.map(c=><li key={c.id} lang="de"><span className="font-medium text-ink">{c.front||c.g?.t||c.m?.good}</span> <span className="text-muted">{c.back||c.m?.why||c.g?.r}</span></li>)}</ul></div>:null}
       <div className="mt-5 flex flex-wrap justify-center gap-2">{next?<button onClick={()=>onNext(next)} className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-medium text-on-accent">Next: {next.short||next.title}<LuArrowRight aria-hidden className="size-4"/></button>:null}
         <button onClick={onBack} className="rounded-md border border-line px-4 py-2 text-ink hover:border-muted">Back to Roadmap</button></div></div></div>}
   const {c,type}=step,v=c.kind==='verb'?verbOf(c):null;
@@ -440,12 +450,19 @@ function LearnSession({ids,state,update,onBack,next,onNext}){
   const prompt=(label,children)=><div className="text-center"><p className="font-mono text-xs uppercase tracking-wider text-muted">{label}</p><div className="mt-3 flex items-center justify-center gap-1">{children}</div></div>;
   return <div className="mx-auto max-w-xl">{bar}
     <div className="panel min-h-80 p-6">
-      {type==='meet'?<div className="text-center"><p className="font-mono text-xs uppercase tracking-wider text-accent">New {c.kind==='word'?(c.art?'noun':'word'):c.kind}</p>
+      {c.img&&type!=='meet'?<div aria-hidden className="mb-3 text-center text-5xl">{c.img}</div>:null}
+      {review&&c.lesson!=null?<p className="mb-2 text-center font-mono text-[11px] text-muted">Lektion {String(c.lesson+1).padStart(2,'0')} · {LESSONS[c.lesson].title}</p>:null}
+      {type==='meet'?<div className="text-center">{c.img?<div aria-hidden className="mb-2 text-6xl">{c.img}</div>:null}<p className="font-mono text-xs uppercase tracking-wider text-accent">New {c.kind==='word'?(c.art?'noun':'word'):c.kind}</p>
         <div className="mt-4 flex items-center justify-center gap-1"><German big/><SpeakBtn text={c.front}/></div>
         <p className="mt-2 text-xl text-ink">{c.back}</p>
         <p lang="de" className="mt-1 font-mono text-[13px] text-muted">{v?`${v.pr[2]} · ${v.pt[2]} · ${perfektOf(v)}`:c.sub}</p>
         {c.ex?<p lang="de" className="mx-auto mt-5 flex max-w-md items-center justify-center gap-1 rounded-lg bg-accent-soft/60 px-3 py-2 text-ink">{c.ex}<SpeakBtn text={c.ex} size="size-4"/></p>:null}
         <button onClick={()=>answer(true)} className="mt-6 w-full rounded-md bg-accent py-2.5 font-medium text-on-accent">Got it <span className="ml-1 text-xs opacity-75">Enter</span></button></div>
+      :type==='grammar'?<div className="text-center"><p className="font-mono text-xs uppercase tracking-wider text-muted">Grammar refresh · can you explain it?</p><p className="mt-3 font-display text-2xl font-semibold text-ink">{c.g.t}</p>
+        {!shown?<button onClick={()=>setShown(true)} className="mt-6 w-full rounded-md bg-accent py-2.5 font-medium text-on-accent">Show the rule</button>
+        :<div className="mt-4 text-left"><p className="text-ink/85">{c.g.r}</p><dl className="mt-3 space-y-1.5 rounded-lg bg-accent-soft/50 p-3 text-sm">{c.g.ex.map(([de,en])=><div key={de} className="grid gap-x-4 sm:grid-cols-2"><dt lang="de" className="font-mono text-[13px] text-ink">{de}</dt><dd className="text-muted">{en}</dd></div>)}</dl>
+          {!res?<div className="mt-4 grid grid-cols-2 gap-2"><button onClick={()=>answer(false)} className="rounded-md border border-bad/40 bg-bad-soft py-2 text-bad">I forgot</button><button onClick={()=>answer(true)} className="rounded-md border border-good/40 bg-good-soft py-2 text-good">I remembered</button></div>:null}</div>}</div>
+      :type==='mistake'?<>{prompt('Which one is correct?',<Chip>{c.m.k}</Chip>)}<Options de/>{res?<p className="mt-3 text-sm text-muted">{c.m.why}</p>:null}</>
       :type==='recog'?<>{prompt('What does it mean?',<><German/><SpeakBtn text={c.front}/></>)}<Options/></>
       :type==='recall'?<>{prompt('How do you say it in German?',<span className="text-2xl font-semibold text-ink">{c.back}</span>)}<Options de/></>
       :type==='perfekt'?<>{prompt('Perfekt · er/sie/es',<span lang="de" className="text-2xl font-semibold text-ink">{c.front}</span>)}<p className="mt-1 text-center text-muted">{c.back}</p><Options de/></>
@@ -458,7 +475,7 @@ function LearnSession({ids,state,update,onBack,next,onNext}){
         <div lang="de" className="mt-3 flex flex-wrap justify-center gap-1.5">{step.tiles.map(t=>{const used=picked.some(p=>p.k===t.k);return <button key={t.k} disabled={used||!!res} onClick={()=>tap(t)} className={`rounded-md border px-2.5 py-1.5 ${used?'border-transparent bg-line/40 text-transparent':'border-line bg-surface text-ink hover:border-accent'}`}>{t.x}</button>})}</div></>:null}
       {res?<div className={`mt-5 rounded-lg p-3 ${res.ok?'bg-good-soft':'bg-bad-soft'}`}>
         <p className={`flex items-center gap-1.5 font-medium ${res.ok?'text-good':'text-bad'}`}>{res.ok?<LuCheck aria-hidden className="size-4"/>:<LuX aria-hidden className="size-4"/>}{res.ok?(res.note||'Richtig'):(res.note||'Not quite')}</p>
-        {!res.ok?<><p lang="de" className="mt-1 flex items-center gap-1 text-ink"><span className="font-semibold">{step.answer||c.front}</span><SpeakBtn text={c.front} size="size-4"/></p><p className="text-sm text-muted">{c.back} · it comes back in a moment</p>
+        {!res.ok?<><p lang="de" className="mt-1 flex items-center gap-1 text-ink"><span className="font-semibold">{step.answer||c.front||c.g?.t}</span>{c.front?<SpeakBtn text={c.front} size="size-4"/>:null}</p><p className="text-sm text-muted">{c.back?`${c.back} · `:''}it comes back in a moment</p>
           <button onClick={()=>show(step.i)} className="mt-3 w-full rounded-md bg-ink py-2 font-medium text-bg">Continue <span className="ml-1 text-xs opacity-75">Enter</span></button></>:null}
       </div>:null}
     </div>
@@ -542,7 +559,7 @@ function Roadmap({li,state,update,go}){
       <svg viewBox="0 0 64 64" className="size-20" role="img" aria-label={`Roadmap ${r.pct}% complete`}><circle cx="32" cy="32" r="27" fill="none" stroke="var(--accent-soft)" strokeWidth="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${r.pct*1.696} 170`} transform="rotate(-90 32 32)"/><text x="32" y="37" textAnchor="middle" fontSize="15" fontWeight="700" fill="var(--ink)" className="font-sans">{r.pct}%</text></svg>
       <div className="min-w-0 space-y-1">{finished?<><p className="flex items-center gap-2 font-display text-xl font-semibold text-ink"><LuTrophy aria-hidden className="size-5 text-accent"/>Lektion abgeschlossen</p><p className="text-muted">Refresh with the Spickzettel and keep up your SRS reviews.</p></>
         :<><p className="font-mono text-xs uppercase tracking-wider text-accent">Stage {r.current+1} of {r.stages.length} · {r.doneTasks}/{r.tasks.length} tasks</p><p className="font-display text-xl font-semibold text-ink">Next: {next.title}</p><p className="text-sm text-muted">{next.hint}</p></>}
-        <div className="pt-1"><GoalMeter state={state} update={update}/></div></div>
+        <div className="pt-1"><GoalMeter state={state} update={update}/></div><p className="flex items-center gap-1.5 text-sm text-muted"><LuTimer aria-hidden className="size-4"/>{fmtT(state.time?.[l.id])} on this video{state.finished?.[l.id]?` · finished in ${fmtT(state.finished[l.id])}`:r.pct>=5&&(state.time?.[l.id]||0)>=300?` · about ${fmtT((state.time?.[l.id]||0)/(r.pct/100))} in total`:''}</p></div>
       {finished?<button onClick={()=>go('spickzettel')} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 font-medium text-on-accent">Open Spickzettel<LuArrowRight aria-hidden className="size-4"/></button>
       :<button onClick={()=>start(next)} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-medium text-on-accent"><LuPlay aria-hidden className="size-4"/>Start</button>}
     </div>
@@ -551,7 +568,7 @@ function Roadmap({li,state,update,go}){
         <span aria-hidden className={`absolute left-0 top-3 grid size-[2.3rem] place-items-center rounded-full border-2 font-mono text-sm font-semibold ${x.complete?'border-accent bg-accent text-on-accent':cur?'border-accent bg-surface text-accent':'border-line bg-surface text-muted'}`}>{x.complete?<LuCheck className="size-4"/>:k+1}</span>
         <div className={`panel ${cur?'ring-2 ring-accent/40':''}`}>
           <button aria-expanded={isOpen} onClick={()=>toggle(k)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
-            <span className="min-w-0"><span className="block font-display text-lg font-semibold text-ink">{x.t}</span><span className="block text-sm text-muted">{x.en}</span></span>
+            <span className="min-w-0"><span className="block font-display text-lg font-semibold text-ink">{x.t}</span><span className="block text-sm text-muted">{tr(x)}</span></span>
             <span className="flex shrink-0 items-center gap-2"><span className={`font-mono text-sm ${x.complete?'text-accent':'text-muted'}`}>{x.n}/{x.tasks.length}</span><LuChevronDown aria-hidden className={`size-4 text-muted transition-transform ${isOpen?'rotate-180':''}`}/></span></button>
           {isOpen?<ul className="divide-y divide-line border-t border-line px-4">{x.tasks.map(t=>{const ok=t.done>=t.total;return <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-3">
             {ok?<LuCircleCheck aria-hidden className="size-5 shrink-0 text-accent"/>:<LuCircle aria-hidden className="size-5 shrink-0 text-line-strong"/>}
@@ -560,6 +577,37 @@ function Roadmap({li,state,update,go}){
             <button onClick={()=>start(t)} className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium ${ok?'border border-line text-muted hover:text-ink':'bg-accent text-on-accent'}`}>{ok?<><LuRefreshCw aria-hidden className="size-3.5"/>Again</>:<><LuPlay aria-hidden className="size-3.5"/>Start</>}</button>
           </li>})}</ul>:null}
         </div></li>})}</ol>
+  </section>;
+}
+
+/* ---------- Tagesmix: daily mixed review across all videos ---------- */
+function buildMix(state){
+  const today=dayStr(), learned=DECK.filter(c=>isLearned(state,c.id));
+  const due=learned.filter(c=>(state.cards[c.id]?.due||today)<=today);
+  const rest=learned.filter(c=>!due.includes(c)).sort((a,b)=>(state.cards[a.id]?.last||'').localeCompare(state.cards[b.id]?.last||''));
+  const rr=g=>{const m={};g.forEach(c=>(m[c.lesson]??=[]).push(c));const ls=Object.values(m),out=[];for(let k=0;ls.some(x=>x[k]);k++)ls.forEach(x=>x[k]&&out.push(x[k]));return out};
+  const picked=[...rr(shuffle(due)),...rr(rest)].slice(0,20);
+  const lessons=[...new Set(learned.map(c=>c.lesson))];
+  const topics=shuffle(lessons.flatMap(li=>[...shuffle(LESSONS[li].grammar).slice(0,2).map(g=>({id:`g:${li}:${g.t}`,kind:'grammar',g,lesson:li})),...shuffle(LESSONS[li].mistakes).slice(0,2).map(m=>({id:`f:${li}:${m.bad}`,kind:'mistake',m,lesson:li}))])).slice(0,4);
+  const rtype=c=>c.kind==='grammar'?'grammar':c.kind==='mistake'?'mistake':c.kind==='phrase'?'tiles':c.kind==='verb'?shuffle(['type','perfekt','recall'])[0]:shuffle(['recall','type','recog'])[0];
+  return {items:shuffle([...picked,...topics]).map(c=>({...c,rtype:rtype(c)})),due:due.length,lessons};
+}
+function Mix({state,update,go}){
+  const [mix,setMix]=useState(()=>buildMix(state));
+  const [run,setRun]=useState(false);
+  const done=state.mix?.day===dayStr();
+  const count=k=>mix.items.filter(c=>k==='topic'?c.kind==='grammar'||c.kind==='mistake':c.kind===k).length;
+  if(run)return <section><div className="mb-6 flex items-center gap-3"><button onClick={()=>setRun(false)} className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink hover:border-muted"><LuChevronLeft aria-hidden className="size-4"/>Tagesmix</button></div>
+    <LearnSession key={mix.items.map(c=>c.id).join()} cards={mix.items} review state={state} update={update} onBack={()=>{setRun(false);setMix(buildMix(state))}} onFinish={()=>update(s=>({...s,mix:{day:dayStr(),n:((s.mix?.day===dayStr()&&s.mix.n)||0)+1}}))}/></section>;
+  return <section><Head de="Tagesmix" title="Daily mixed review · words, verbs, phrases and topics from all your videos"/>
+    {mix.items.length?<div className="panel mx-auto max-w-2xl p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-display text-2xl font-semibold text-ink">{mix.items.length} items today</p><p className="text-muted">{mix.due} due for review · from {mix.lessons.length} {mix.lessons.length===1?'video':'videos'}</p></div>
+        {done?<Chip cls="bg-good-soft text-good">done today{state.mix.n>1?` ×${state.mix.n}`:''}</Chip>:null}</div>
+      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{[['Words','word'],['Verbs','verb'],['Phrases','phrase'],['Topics','topic']].map(([t,k])=><div key={k} className="rounded-lg bg-accent-soft/60 p-3"><dt className="text-sm text-muted">{t}</dt><dd className="font-mono text-xl text-ink">{count(k)}</dd></div>)}</dl>
+      <div className="mt-4 flex flex-wrap gap-1.5">{mix.lessons.map(li=><Chip key={li}>Lektion {String(li+1).padStart(2,'0')} · {LESSONS[li].title}</Chip>)}</div>
+      <button onClick={()=>setRun(true)} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent py-2.5 font-medium text-on-accent"><LuPlay aria-hidden className="size-4"/>{done?'Another round':'Start today’s mix'}</button>
+      <p className="mt-3 text-sm text-muted">One quick question per item, in a new mix every day. Cards you get wrong come back tomorrow, and topics come from grammar and common mistakes.</p></div>
+    :<div className="panel mx-auto max-w-xl p-8 text-center"><p className="font-display text-xl font-semibold text-ink">Nothing to mix yet</p><p className="mt-1 text-muted">Finish your first pack in a video’s Roadmap. From then on, everything you have learned shows up here, mixed across videos.</p></div>}
   </section>;
 }
 
@@ -578,26 +626,58 @@ function Cheat({lesson,go}){
       {lesson.cheat?box('Das Wichtigste',<ol className="list-decimal space-y-1.5 pl-5 text-ink">{lesson.cheat.map(c=><li key={c}>{c}</li>)}</ol>):null}
       {box('Verben · er/sie/es · Präteritum · Perfekt',<ul className="space-y-0.5 text-sm">{lesson.verbs.map(v=><li key={v.inf} className="grid grid-cols-[9.5rem_1fr] gap-2"><span lang="de" className={`truncate font-semibold ${v.type==='irregular'?'text-accent':'text-ink'}`}>{v.inf}</span><span lang="de" className="min-w-0 font-mono text-[12.5px] text-muted">{v.pr[2]} · {v.pt[2]} · <span className={v.aux==='ist'?'font-semibold text-bad':''}>{v.aux}</span> {v.pp}</span></li>)}</ul>,'')}
       {box('Nomen',<div className="space-y-2.5 text-sm">{['der','die','das'].map(a=><p key={a} lang="de" className="leading-7"><Chip cls={GENDER[a]}>{a}</Chip> {g(a).map((n,k)=><span key={n.w}>{k?<span className="text-line-strong"> · </span>:null}<span className="text-ink">{n.w}</span><span className="text-muted"> {n.p}</span></span>)}</p>)}</div>)}
-      {box('Sätze für den Schalter',<ul className="space-y-1.5 text-sm">{lesson.phrases.map(p=><li key={p.de}><span lang="de" className="font-medium text-ink">{p.de}</span> <span className="text-muted">{en(p.en)}</span></li>)}</ul>)}
+      {box('Sätze für den Schalter',<ul className="space-y-1.5 text-sm">{lesson.phrases.map(p=><li key={p.de}><span lang="de" className="font-medium text-ink">{p.de}</span> <span className="text-muted">{en(tr(p))}</span></li>)}</ul>)}
       {box('Grammatik in einer Zeile',<ul className="space-y-1.5 text-sm">{lesson.grammar.map(x=><li key={x.t}><span className="font-semibold text-ink">{x.t}:</span> <span lang="de" className="font-mono text-[12.5px] text-ink/85">{x.ex[0][0]}</span></li>)}</ul>)}
-      {box('Adjektive & Co.',<p lang="de" className="text-sm leading-7">{lesson.mods.map((m,k)=><span key={m.w}>{k?<span className="text-line-strong"> · </span>:null}<span className="font-medium text-ink">{m.w}</span> <span className="text-muted">{en(m.en)}</span></span>)}</p>)}
+      {box('Adjektive & Co.',<p lang="de" className="text-sm leading-7">{lesson.mods.map((m,k)=><span key={m.w}>{k?<span className="text-line-strong"> · </span>:null}<span className="font-medium text-ink">{m.w}</span> <span className="text-muted">{en(tr(m))}</span></span>)}</p>)}
       {box('Vorsicht',<ul className="space-y-1.5 text-sm">{lesson.mistakes.map(m=><li key={m.bad} className="flex gap-1.5"><LuCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-good"/><span lang="de" className="text-ink">{m.good}</span></li>)}</ul>)}
     </div>
     <p className="mt-2 text-sm text-muted">Colour key: <span className="font-semibold text-accent">irregular verb</span> · <span className="font-semibold text-bad">sein</span> in Perfekt</p>
   </section>;
 }
 
+/* ---------- study timer and pace ---------- */
+const fmtT=sec=>{const m=Math.round((sec||0)/60);return m<60?`${m} min`:`${Math.floor(m/60)} h ${String(m%60).padStart(2,'0')} min`};
+function useStudyTimer(update,key,lesson,li){
+  useEffect(()=>{let last=Date.now();const poke=()=>{last=Date.now()};
+    const ev=['pointerdown','keydown','scroll','touchstart','mousemove'];ev.forEach(e=>addEventListener(e,poke,{passive:true}));
+    const STEP=5,id=setInterval(()=>{if(document.visibilityState!=='visible'||!document.hasFocus()||Date.now()-last>180000)return;
+      update(s=>{const d=dayStr(),time={...(s.time||{}),[key]:((s.time||{})[key]||0)+STEP},days={...(s.days||{}),[d]:((s.days||{})[d]||0)+STEP};let finished=s.finished||{};
+        if(lesson&&!finished[lesson.id]&&roadmap(li,s).current===-1)finished={...finished,[lesson.id]:time[key]};return {...s,time,days,finished}})},STEP*1000);
+    return()=>{clearInterval(id);ev.forEach(e=>removeEventListener(e,poke))}},[key]);
+}
+export function pace(state){
+  const fin=Object.values(state.finished||{}),days=Object.values(state.days||{}).filter(x=>x>=60),total=Object.values(state.time||{}).reduce((a,b)=>a+b,0);
+  let perVideo=null,basis='';
+  if(fin.length){perVideo=fin.reduce((a,b)=>a+b,0)/fin.length;basis=`average of ${fin.length} finished ${fin.length===1?'video':'videos'}`}
+  else{const est=LESSONS.map((l,i)=>({t:state.time?.[l.id]||0,p:roadmap(i,state).pct})).filter(x=>x.p>=5&&x.t>=300).map(x=>x.t/(x.p/100));if(est.length){perVideo=est.reduce((a,b)=>a+b,0)/est.length;basis='estimated from your current progress'}}
+  const perDay=days.length?days.reduce((a,b)=>a+b,0)/days.length:0, target=state.target||300, left=Math.max(0,target-fin.length);
+  const months=perVideo&&perDay?left*perVideo/perDay/30.4:null;
+  return {perVideo,basis,perDay,target,left,months,total,done:fin.length,studyDays:days.length};
+}
+function Pace({state,update}){
+  const p=pace(state);const end=p.months?new Date(Date.now()+p.months*30.4*864e5):null;
+  return <div data-hue="green" className="panel p-5"><h3 className="mb-3 flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-accent"><LuTimer aria-hidden className="size-4"/>Pace</h3>
+    {p.months!=null?<p className="font-display text-2xl font-semibold text-ink">≈ {p.months<1?'less than 1 month':`${p.months.toFixed(p.months<10?1:0)} months`} <span className="text-base font-normal text-muted">to finish {p.target} videos{end?`, around ${end.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}`:''}</span></p>
+      :<p className="text-ink">Study for a little while and the prediction appears here. It needs about 5% of a roadmap and 5 minutes of active time.</p>}
+    <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+      {[['Per video',p.perVideo?fmtT(p.perVideo):'not yet'],['Per study day',p.perDay?fmtT(p.perDay):'not yet'],['Total active time',fmtT(p.total)],['Videos finished',`${p.done} / ${p.target}`]].map(([k,v])=><div key={k}><dt className="text-muted">{k}</dt><dd className="font-mono tabular-nums text-ink">{v}</dd></div>)}</dl>
+    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">{p.basis?<span>Per video: {p.basis}.</span>:null}<label htmlFor="target">Videos you plan to do</label>
+      <input id="target" type="number" min="1" max="2000" value={p.target} onChange={e=>{const v=Math.max(1,Math.min(2000,+e.target.value||1));update(s=>({...s,target:v}))}} className="w-20 rounded border border-line bg-surface px-2 py-0.5 font-mono text-ink"/></div>
+    <p className="mt-2 text-[13px] text-muted">Counts only while this site is open, in front, and you have touched it in the last 3 minutes.</p></div>;
+}
+
 /* ---------- shell ---------- */
 const ROOT=document.body?.dataset.root??'';
 const pageHref=l=>`${ROOT}lessons/${l.slug}.html`;
-const LESSON_TABS=[['roadmap','Roadmap',LuRoute],['spickzettel','Spickzettel',LuStickyNote],['verben','Verben',LuBookOpen],['training','Training',LuDumbbell],['redemittel','Redemittel',LuMessageSquare],['vokabeln','Nomen & Adj.',LuTag],['grammatik','Grammatik',LuGitBranch],['goethe','Goethe B2',LuFileCheck],['fehler','Fehler',LuTriangleAlert],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
-const HUE={roadmap:'indigo',spickzettel:'magenta',verben:'cyan',training:'tangerine',redemittel:'teal',vokabeln:'rose',grammatik:'violet',goethe:'amber',fehler:'crimson',srs:'blue',fortschritt:'green',lektionen:'indigo'};
-const HOME_TABS=[['lektionen','Lektionen',LuBookOpen],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
+const LESSON_TABS=[['roadmap','Roadmap',LuRoute],['mix','Tagesmix',LuBlend],['spickzettel','Spickzettel',LuStickyNote],['verben','Verben',LuBookOpen],['training','Training',LuDumbbell],['redemittel','Redemittel',LuMessageSquare],['vokabeln','Nomen & Adj.',LuTag],['grammatik','Grammatik',LuGitBranch],['goethe','Goethe B2',LuFileCheck],['fehler','Fehler',LuTriangleAlert],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
+const HUE={mix:'teal',roadmap:'indigo',spickzettel:'magenta',verben:'cyan',training:'tangerine',redemittel:'teal',vokabeln:'rose',grammatik:'violet',goethe:'amber',fehler:'crimson',srs:'blue',fortschritt:'green',lektionen:'indigo'};
+const HOME_TABS=[['lektionen','Lektionen',LuBookOpen],['mix','Tagesmix',LuBlend],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
 const Meter=({label,value,max,note,hue,pct})=><div data-hue={hue} className="min-w-0"><div className="flex items-baseline justify-between gap-2"><span className="text-[13px] text-muted">{label}</span><span className="font-mono text-sm tabular-nums whitespace-nowrap text-ink">{value}{pct?'%':max!=null?` / ${max}`:''}</span></div>
   {max!=null?<div className="mt-1.5 h-2 rounded-full bg-accent-soft"><div className="h-2 rounded-full bg-accent" style={{width:`${value/max*100}%`}}/></div>:<div className="mt-1 text-xs text-muted">{note}</div>}</div>;
 function Home({state,update}){
   return <section><Head de="Lektionen" title="One dashboard per video · reviews and streak are shared"/>
     <div className="panel mb-4 px-5 py-3"><GoalMeter state={state} update={update}/></div>
+    <div className="mb-4"><Pace state={state} update={update}/></div>
     <ul className="panel divide-y divide-line px-5">{LESSONS.map((l,i)=>{const s=stats(state,i);return <li key={l.id}><a href={pageHref(l)} className="grid gap-x-6 gap-y-2 py-4 hover:text-accent sm:grid-cols-[1fr_16rem]"><span className="min-w-0"><span className="font-mono text-xs text-accent">Lektion {String(i+1).padStart(2,'0')} · {l.series} · {l.length}</span><span className="block font-display text-lg font-semibold text-ink">{l.title}</span><span className="block text-sm text-muted">{l.topic}</span></span><span className="self-center space-y-2"><Meter hue="indigo" pct label="Roadmap" value={roadmap(i,state).pct} max={100}/><Meter hue="blue" label="Cards started" value={s.seen} max={s.total}/></span></a></li>})}</ul></section>;
 }
 function App(){
@@ -610,6 +690,7 @@ function App(){
   useEffect(()=>{const on=()=>setTab(start());addEventListener('hashchange',on);return()=>removeEventListener('hashchange',on)},[]);
   const [focus,setFocus]=useState({});
   const go=(k,opt={})=>{setFocus({...opt,n:Date.now()});setTab(k);location.hash=k;scrollTo(0,0)};
+  useStudyTimer(update,lesson?lesson.id:'_home',lesson,li);
   const st=stats(state,li), used=state.newDay===dayStr()?state.newCount:0;
   return <div className="min-h-full bg-bg text-ink">
     <header className="border-b border-line bg-surface"><div aria-hidden className="stripe"/><div className="mx-auto max-w-6xl px-gutter pb-3 pt-6">
@@ -617,7 +698,8 @@ function App(){
         <div className="min-w-0">{lesson?<a href={`${ROOT}index.html`} className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-accent"><LuHouse aria-hidden className="size-3.5"/>Alle Lektionen</a>:<p className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-accent"><LuPackage aria-hidden className="size-3.5"/>Goethe B2</p>}
           <h1 className="mt-1 font-display text-3xl font-bold text-balance text-ink">{lesson?lesson.title:'Easy German Wortbank'}</h1>
           {lesson?<a href={lesson.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-muted hover:text-accent"><LuExternalLink aria-hidden className="size-3.5"/>{lesson.series} · {lesson.length}</a>:null}</div>
-        {LESSONS.length>1&&lesson?<div className="w-full min-w-0 sm:w-80"><label htmlFor="lesson" className="sr-only">Go to lesson</label><select id="lesson" value={li} onChange={e=>{location.href=pageHref(LESSONS[+e.target.value])}} className="w-full rounded-md border border-line bg-bg px-2 py-1.5 text-ink">{LESSONS.map((l,i)=><option key={l.id} value={i}>Lektion {String(i+1).padStart(2,'0')}: {l.title}</option>)}</select></div>:null}</div>
+        <div className="flex flex-wrap items-center gap-2"><label htmlFor="lang" className="flex items-center gap-1 text-sm text-muted"><LuLanguages aria-hidden className="size-4"/><span className="sr-only">Translation language</span></label><select id="lang" value={LANG} onChange={e=>{try{localStorage.setItem(LANG_KEY,e.target.value)}catch{};location.reload()}} className="rounded-md border border-line bg-bg px-2 py-1.5 text-sm text-ink"><option value="both">EN + RU</option><option value="en">English</option><option value="ru">Русский</option></select>
+        {LESSONS.length>1&&lesson?<div className="w-full min-w-0 sm:w-80"><label htmlFor="lesson" className="sr-only">Go to lesson</label><select id="lesson" value={li} onChange={e=>{location.href=pageHref(LESSONS[+e.target.value])}} className="w-full rounded-md border border-line bg-bg px-2 py-1.5 text-ink">{LESSONS.map((l,i)=><option key={l.id} value={i}>Lektion {String(i+1).padStart(2,'0')}: {l.title}</option>)}</select></div>:null}</div></div>
       <div className={`mt-4 grid grid-cols-2 gap-x-6 gap-y-3 ${lesson?'lg:grid-cols-6':'lg:grid-cols-5'}`}>
         {lesson?<Meter hue="indigo" pct label="Roadmap" value={roadmap(li,state).pct} max={100}/>:null}<Meter hue="blue" label="Words mastered" value={st.wordsDone} max={st.words}/><Meter hue="teal" label="Phrases learned" value={st.phrasesDone} max={st.phrases}/><Meter hue="amber" label="B2 texts done" value={st.textsDone} max={st.texts}/>
         <Meter hue="tangerine" label="SRS streak" value={`${st.streak} ${st.streak===1?'day':'days'}`} note={st.streak?'keep it going':'review a card to start'}/>
@@ -626,7 +708,7 @@ function App(){
       <nav aria-label="Sections" className="mx-auto max-w-6xl overflow-x-auto px-gutter"><div className="flex w-max gap-1">{TABS.map(([k,t,I])=><button key={k} data-hue={HUE[k]} aria-current={tab===k?'page':undefined} onClick={()=>go(k)} className={`flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-2.5 py-2.5 text-sm ${tab===k?'border-accent font-semibold text-ink':'border-transparent text-muted hover:text-ink'}`}><I aria-hidden className="size-4 text-accent"/>{t}</button>)}</div></nav>
     </header>
     <main data-hue={HUE[tab]} className="mx-auto max-w-6xl px-gutter py-8">
-      {tab==='lektionen'?<Home state={state} update={update}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='roadmap'?<Roadmap key={focus.n||0} li={li} state={state} update={update} go={go}/>:tab==='spickzettel'?<Cheat lesson={lesson} go={go}/>:tab==='training'?<Training key={focus.n||0} start={focus.verb} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Practice lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
+      {tab==='lektionen'?<Home state={state} update={update}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='mix'?<Mix key={focus.n||0} state={state} update={update} go={go}/>:tab==='roadmap'?<Roadmap key={focus.n||0} li={li} state={state} update={update} go={go}/>:tab==='spickzettel'?<Cheat lesson={lesson} go={go}/>:tab==='training'?<Training key={focus.n||0} start={focus.verb} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Practice lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
     </main>
   </div>;
 }
