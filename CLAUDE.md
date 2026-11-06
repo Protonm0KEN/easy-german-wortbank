@@ -6,5 +6,5 @@ Static GitHub Pages site: one German study dashboard per Easy German video. Live
 - New video: add `src/lessons/lNN-topic.js` (copy the shape of `l01-post-office.js`, including `drills` with 2–3 sentences per verb), register it in `src/lessons/index.js`, then `npm install && npm run build`.
 - Never rename lesson ids or entry keys: progress in the browser is keyed on them.
 - Every lesson needs all tabs: Roadmap, Spickzettel, Verben, Training, Redemittel, Nomen & Adj., Grammatik, Goethe B2, Fehler, SRS, Fortschritt.
-- Roadmap tasks are computed in `roadmap()` in `src/app.jsx` from progress in the other tabs; only reading tasks are ticked by hand.
+- Roadmap tasks are computed in `roadmap()` in `src/app.jsx` from progress in the other tabs, and every task runs inline in the Roadmap tab. Words, verbs and phrases are learned in `LearnSession` packs (meet → recognise → recall → type; verbs add Perfekt; phrases use word tiles). Learned items go into SRS for the next day.
 - Each lesson file has `cheat`: 4–6 key takeaways in German for the Spickzettel.

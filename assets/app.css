@@ -5,6 +5,7 @@
   :root, :host {
     --spacing: 0.25rem;
     --container-xs: 20rem;
+    --container-md: 28rem;
     --container-xl: 36rem;
     --container-3xl: 48rem;
     --container-6xl: 72rem;
@@ -263,6 +264,9 @@
   .mt-4 {
     margin-top: calc(var(--spacing) * 4);
   }
+  .mt-5 {
+    margin-top: calc(var(--spacing) * 5);
+  }
   .mt-6 {
     margin-top: calc(var(--spacing) * 6);
   }
@@ -293,11 +297,17 @@
   .mb-6 {
     margin-bottom: calc(var(--spacing) * 6);
   }
+  .ml-1 {
+    margin-left: var(--spacing);
+  }
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
   }
   .ml-3 {
     margin-left: calc(var(--spacing) * 3);
+  }
+  .ml-auto {
+    margin-left: auto;
   }
   .block {
     display: block;
@@ -336,6 +346,14 @@
     width: calc(var(--spacing) * 6);
     height: calc(var(--spacing) * 6);
   }
+  .size-8 {
+    width: calc(var(--spacing) * 8);
+    height: calc(var(--spacing) * 8);
+  }
+  .size-10 {
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+  }
   .size-20 {
     width: calc(var(--spacing) * 20);
     height: calc(var(--spacing) * 20);
@@ -350,6 +368,9 @@
   .h-2 {
     height: calc(var(--spacing) * 2);
   }
+  .h-2\.5 {
+    height: calc(var(--spacing) * 2.5);
+  }
   .h-3 {
     height: calc(var(--spacing) * 3);
   }
@@ -359,8 +380,14 @@
   .min-h-5 {
     min-height: calc(var(--spacing) * 5);
   }
+  .min-h-14 {
+    min-height: calc(var(--spacing) * 14);
+  }
   .min-h-64 {
     min-height: calc(var(--spacing) * 64);
+  }
+  .min-h-80 {
+    min-height: calc(var(--spacing) * 80);
   }
   .min-h-full {
     min-height: 100%;
@@ -370,6 +397,9 @@
   }
   .w-8 {
     width: calc(var(--spacing) * 8);
+  }
+  .w-9 {
+    width: calc(var(--spacing) * 9);
   }
   .w-24 {
     width: calc(var(--spacing) * 24);
@@ -391,6 +421,9 @@
   }
   .max-w-\[65ch\] {
     max-width: 65ch;
+  }
+  .max-w-md {
+    max-width: var(--container-md);
   }
   .max-w-xl {
     max-width: var(--container-xl);
@@ -609,6 +642,10 @@
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 3px;
   }
+  .border-dashed {
+    --tw-border-style: dashed;
+    border-style: dashed;
+  }
   .border-accent {
     border-color: var(--accent);
   }
@@ -666,6 +703,12 @@
       background-color: color-mix(in oklab, var(--accent-soft) 50%, transparent);
     }
   }
+  .bg-accent-soft\/60 {
+    background-color: var(--accent-soft);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--accent-soft) 60%, transparent);
+    }
+  }
   .bg-bad-soft {
     background-color: var(--bad-soft);
   }
@@ -683,6 +726,15 @@
   }
   .bg-good-soft {
     background-color: var(--good-soft);
+  }
+  .bg-ink {
+    background-color: var(--ink);
+  }
+  .bg-line\/40 {
+    background-color: var(--line);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--line) 40%, transparent);
+    }
   }
   .bg-line\/50 {
     background-color: var(--line);
@@ -708,8 +760,14 @@
   .bg-warn-soft {
     background-color: var(--warn-soft);
   }
+  .p-1 {
+    padding: var(--spacing);
+  }
   .p-1\.5 {
     padding: calc(var(--spacing) * 1.5);
+  }
+  .p-2 {
+    padding: calc(var(--spacing) * 2);
   }
   .p-3 {
     padding: calc(var(--spacing) * 3);
@@ -927,6 +985,9 @@
   .text-bad {
     color: var(--bad);
   }
+  .text-bg {
+    color: var(--bg);
+  }
   .text-das {
     color: var(--das);
   }
@@ -988,6 +1049,12 @@
   .underline-offset-2 {
     text-underline-offset: 2px;
   }
+  .opacity-60 {
+    opacity: 60%;
+  }
+  .opacity-75 {
+    opacity: 75%;
+  }
   .opacity-80 {
     opacity: 80%;
   }
@@ -1004,6 +1071,11 @@
     @supports (color: color-mix(in lab, red, red)) {
       --tw-ring-color: color-mix(in oklab, var(--accent) 40%, transparent);
     }
+  }
+  .transition-all {
+    transition-property: all;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
   .transition-transform {
     transition-property: transform, translate, scale, rotate;
@@ -1058,6 +1130,9 @@
     }
     .hover\:border-muted:hover {
       border-color: var(--muted);
+    }
+    .hover\:bg-accent-soft:hover {
+      background-color: var(--accent-soft);
     }
     .hover\:text-accent:hover {
       color: var(--accent);

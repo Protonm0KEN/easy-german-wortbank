@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useMemo,useRef,useCallback} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle,LuRoute,LuStickyNote,LuCircle,LuCircleCheck,LuArrowRight,LuEye,LuEyeOff,LuTrophy} from 'react-icons/lu';
+import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle,LuRoute,LuStickyNote,LuCircle,LuCircleCheck,LuArrowRight,LuEye,LuEyeOff,LuTrophy,LuVolume2,LuVolumeX,LuSparkles,LuTarget,LuCirclePlay,LuRefreshCw} from 'react-icons/lu';
 import {LESSONS} from './lessons/index.js';
 
 /* ---------- dates and spaced repetition ---------- */
@@ -32,7 +32,7 @@ const DECK=LESSONS.flatMap((l,li)=>[
 ]);
 
 /* ---------- persistence: this browser, shared by every page of the site ---------- */
-const EMPTY={cards:{},texts:{},drills:{},roadmap:{},streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
+const EMPTY={cards:{},texts:{},drills:{},roadmap:{},learned:{},goal:30,learnDay:null,learnCount:0,streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
 const LS='eg-wortbank-v1';
 const readLocal=()=>{try{return JSON.parse(localStorage.getItem(LS))}catch{return null}};
 const writeLocal=s=>{try{localStorage.setItem(LS,JSON.stringify(s))}catch{}};
@@ -97,9 +97,9 @@ function Verdict({ok,shown,onAccept,accepted}){
   return ok||accepted?<span className="inline-flex items-center gap-1 text-sm text-good"><LuCheck aria-hidden className="size-4"/>{accepted&&!ok?'Counted as correct':'Richtig'}</span>
   :<span className="inline-flex flex-wrap items-center gap-2 text-sm text-bad"><span className="inline-flex items-center gap-1"><LuX aria-hidden className="size-4"/>Not quite</span>{onAccept?<button onClick={onAccept} className="text-muted underline underline-offset-2 hover:text-ink">I was right, count it</button>:null}</span>;
 }
-function Training({lesson,state,update,start}){
-  const verbs=lesson.verbs;
-  const [i,setI]=useState(start||0),[tense,setTense]=useState('pr');
+function Training({lesson,state,update,start,only,startTense}){
+  const verbs=only?only.map(k=>lesson.verbs[k]):lesson.verbs;
+  const [i,setI]=useState(only?Math.max(0,only.indexOf(start)):start||0),[tense,setTense]=useState(startTense||'pr');
   const [ans,setAns]=useState({}),[shown,setShown]=useState({}),[acc,setAcc]=useState({});
   const active=useRef(null);
   const v=verbs[i], sents=lesson.drills?.[v.inf]||[], id=`${lesson.id}:v:${v.inf}`;
@@ -197,8 +197,8 @@ function Question({q,i,value,onChange,checked}){
     {checked?<p className={`mt-2 flex gap-1.5 text-sm ${ok?'text-good':'text-bad'}`}>{ok?<LuCheck aria-hidden className="mt-0.5 size-4 shrink-0"/>:<LuX aria-hidden className="mt-0.5 size-4 shrink-0"/>}<span lang="de"><span className="font-medium">{ok?'Richtig. ':q.type==='gap'?`Lösung: ${q.a}. `:'Falsch. '}</span><span className="text-ink/85">{q.why}</span></span></p>:null}
   </li>;
 }
-function Practice({lesson,state,update}){
-  const [cur,setCur]=useState(lesson.texts[0].id);
+function Practice({lesson,state,update,only}){
+  const [cur,setCur]=useState(only||lesson.texts[0].id);
   const t=lesson.texts.find(x=>x.id===cur);
   const saved=state.texts[t.id];
   const [ans,setAns]=useState({}),[checked,setChecked]=useState(false);
@@ -207,7 +207,7 @@ function Practice({lesson,state,update}){
   const answered=t.qs.every((q,i)=>ans[i]!==undefined&&ans[i]!=='');
   const check=()=>{setChecked(true);update(s=>({...s,texts:{...s.texts,[t.id]:{score,total:t.qs.length,ans,day:dayStr()}}}))};
   return <section><Head de="Goethe-Zertifikat B2 Übungen" title="Exam-style practice with this lesson's words · not official papers"/>
-    <div className="mb-5"><Filter label="Text" value={cur} onChange={setCur} options={lesson.texts.map(x=>[x.id,`${x.title}${state.texts[x.id]?' ✓':''}`])}/></div>
+    <div className="mb-5" hidden={!!only}><Filter label="Text" value={cur} onChange={setCur} options={lesson.texts.map(x=>[x.id,`${x.title}${state.texts[x.id]?' ✓':''}`])}/></div>
     <div className={`grid gap-8 ${t.paras.length?'lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]':''}`}>
       {t.paras.length?<article lang="de" className="panel min-w-0 p-5 sm:p-6"><h3 className="font-display text-xl font-semibold text-ink">{t.title}</h3>{t.paras.map(p=><p key={p.slice(0,20)} className="mt-3 max-w-[65ch] leading-relaxed text-ink">{p}</p>)}</article>:null}
       <div className="panel min-w-0 p-5">{t.intro?<p className="mb-3 text-muted">{t.intro}</p>:null}<h3 className="mb-1 font-mono text-xs uppercase tracking-wider text-accent">Aufgaben</h3>
@@ -359,58 +359,192 @@ function Progress({state,update,li}){
   </section>;
 }
 
-/* ---------- Roadmap: tasks computed from progress in the other tabs ---------- */
+/* ---------- Learn mode: small packs, active recall, audio ---------- */
+const AUDIO_KEY='eg-audio';
+const audioOn=()=>{try{return localStorage.getItem(AUDIO_KEY)!=='off'}catch{return true}};
+function say(t){try{if(!audioOn()||!window.speechSynthesis)return;const s=speechSynthesis;s.cancel();const u=new SpeechSynthesisUtterance(t.replace(/·/g,'').replace(/\(.*?\)/g,''));u.lang='de-DE';const v=s.getVoices().find(x=>/^de/i.test(x.lang));if(v)u.voice=v;u.rate=.9;s.speak(u)}catch{}}
+const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+const lev=(a,b)=>{const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]};
+const verbOf=c=>LESSONS[c.lesson].verbs.find(v=>v.inf===c.front);
+const perfektOf=v=>`${v.aux} ${v.refl?'sich ':''}${v.pp}`;
+const STEPS=c=>c.kind==='verb'?['meet','recog','recall','type','perfekt']:c.kind==='phrase'?['meet','recog','tiles']:['meet','recog','recall','type'];
+export const isLearned=(state,id)=>!!state.learned?.[id]||(state.cards[id]?.box||0)>=1;
+const others=c=>DECK.filter(x=>x.lesson===c.lesson&&x.kind===c.kind&&x.id!==c.id);
+const nrm=s=>fold(s.replace(/·/g,''));
+function buildStep(c,type){
+  if(type==='recog')return {options:shuffle([c.back,...shuffle(others(c).map(x=>x.back).filter(b=>b!==c.back)).slice(0,3)]),answer:c.back};
+  if(type==='recall'){let ds=shuffle(others(c)).slice(0,3).map(x=>x.front);
+    if(c.art){const rest=c.front.slice(c.art.length+1),wrong=shuffle(['der','die','das'].filter(a=>a!==c.art))[0];ds=[`${wrong} ${rest}`,...ds.slice(0,2)]}
+    return {options:shuffle([c.front,...ds]),answer:c.front}}
+  if(type==='perfekt'){const v=verbOf(c),r=v.refl?'sich ':'',pp=v.pp;
+    const alt=[`${v.aux==='hat'?'ist':'hat'} ${r}${pp}`,`${v.aux} ${r}${pp.startsWith('ge')?pp.slice(2):'ge'+pp}`,`${v.aux} ${r}${pp.endsWith('en')?pp.slice(0,-2)+'t':pp.replace(/t$/,'en')}`];
+    const ok=perfektOf(v);return {options:shuffle([...new Set([ok,...alt])]),answer:ok}}
+  if(type==='tiles')return {tiles:shuffle(c.front.split(' ').map((x,k)=>({x,k}))),answer:c.front};
+  return {};
+}
+const SpeakBtn=({text,size='size-5'})=><button type="button" aria-label="Play pronunciation" onClick={e=>{e.stopPropagation();say(text)}} className="rounded-full p-1.5 text-accent hover:bg-accent-soft"><LuVolume2 aria-hidden className={size}/></button>;
+function LearnSession({ids,state,update,onBack,next,onNext}){
+  const items=useMemo(()=>ids.map(id=>DECK.find(c=>c.id===id)),[ids.join('|')]);
+  const progRef=useRef(items.map(()=>({lvl:0,seen:-1,miss:0})));
+  const [,force]=useState(0);
+  const turn=useRef(0),timer=useRef(null);
+  const [step,setStep]=useState(null),[res,setRes]=useState(null);
+  const [typed,setTyped]=useState(''),[picked,setPicked]=useState([]),[chosen,setChosen]=useState(null);
+  const [sound,setSound]=useState(audioOn);
+  const inputRef=useRef(null);
+  const pick=last=>{const p=progRef.current.map((x,i)=>({...x,i})).filter(x=>x.lvl<STEPS(items[x.i]).length);if(!p.length)return null;
+    const learning=p.filter(x=>x.lvl>0),fresh=p.filter(x=>x.lvl===0);
+    if(fresh.length&&learning.length<3)return fresh[0].i;
+    const pool=learning.filter(x=>x.i!==last);return (pool.length?pool:learning).sort((a,b)=>a.seen-b.seen)[0].i};
+  const show=last=>{clearTimeout(timer.current);const i=pick(last);setRes(null);setTyped('');setPicked([]);setChosen(null);
+    if(i==null){setStep({done:true});return}
+    const c=items[i],type=STEPS(c)[progRef.current[i].lvl];turn.current++;progRef.current[i].seen=turn.current;
+    setStep({i,c,type,...buildStep(c,type)});if(type==='meet'||type==='recog')setTimeout(()=>say(c.front),120)};
+  useEffect(()=>{show(-1);return()=>clearTimeout(timer.current)},[]);
+  useEffect(()=>{if(step?.type==='type')inputRef.current?.focus()},[step]);
+  const commit=id=>update(s=>{const today=dayStr(),first=!s.learned?.[id],b=bumpStreak(s,today);
+    return {...b,learned:{...(s.learned||{}),[id]:today},cards:s.cards[id]?s.cards:{...s.cards,[id]:{box:0,reps:1,due:addDays(today,1),last:today}},learnDay:today,learnCount:(s.learnDay===today?s.learnCount||0:0)+(first?1:0)}});
+  const answer=(ok,note)=>{if(res||!step||step.done)return;const {i,c,type}=step,x=progRef.current[i],max=STEPS(c).length;
+    x.lvl=ok?x.lvl+1:Math.max(1,x.lvl-1);if(!ok)x.miss++;force(n=>n+1);
+    if(ok&&x.lvl>=max)commit(c.id);
+    if(type==='meet'){show(i);return}
+    setRes({ok,note});if(type!=='recog')say(c.front);
+    if(ok)timer.current=setTimeout(()=>show(i),note?1600:850)};
+  const choose=o=>{if(res)return;setChosen(o);answer(o===step.answer)};
+  const submitType=()=>{if(!typed.trim()||res)return;const want=step.c.front,a=nrm(typed),b=nrm(want);
+    if(a===b)return answer(true);
+    if(step.c.art){const [art,...w]=a.split(' '),[wa,...ww]=b.split(' ');if(w.join(' ')===ww.join(' ')&&art!==wa)return answer(false,'Check the article');if(!['der','die','das'].includes(art)&&a===ww.join(' '))return answer(false,'Write the article too')}
+    if(b.length>4&&lev(a,b)===1)return answer(true,`Almost: ${want}`);
+    answer(false)};
+  const tap=t=>{if(res)return;const n=[...picked,t];setPicked(n);if(n.length===step.tiles.length)answer(n.map(x=>x.x).join(' ')===step.answer)};
+  useEffect(()=>{const on=e=>{if(!step||step.done||/SELECT/.test(e.target.tagName))return;
+    if(e.key==='Enter'){if(step.type==='meet'){e.preventDefault();answer(true)}else if(res&&!res.ok){e.preventDefault();show(step.i)}else if(step.type==='type'&&!res){e.preventDefault();submitType()}}
+    if(step.options&&!res&&/^[1-4]$/.test(e.key)&&e.target.tagName!=='INPUT'){const o=step.options[+e.key-1];if(o)choose(o)}};
+    addEventListener('keydown',on);return()=>removeEventListener('keydown',on)});
+  const total=items.reduce((a,c)=>a+STEPS(c).length,0),now=progRef.current.reduce((a,x)=>a+x.lvl,0);
+  const doneN=progRef.current.filter((x,i)=>x.lvl>=STEPS(items[i]).length).length;
+  const toggleSound=()=>{const v=!sound;setSound(v);try{localStorage.setItem(AUDIO_KEY,v?'on':'off')}catch{}};
+  const bar=<div className="mb-4 flex items-center gap-3"><div className="h-2.5 flex-1 rounded-full bg-accent-soft"><div className="h-2.5 rounded-full bg-accent transition-all" style={{width:`${now/total*100}%`}}/></div><span className="font-mono text-sm tabular-nums text-muted">{doneN}/{items.length}</span>
+    <button onClick={toggleSound} aria-pressed={sound} aria-label={sound?'Turn sound off':'Turn sound on'} className="rounded-md p-1 text-muted hover:text-ink">{sound?<LuVolume2 aria-hidden className="size-5"/>:<LuVolumeX aria-hidden className="size-5"/>}</button></div>;
+  if(!step)return null;
+  if(step.done){const hard=items.filter((c,i)=>progRef.current[i].miss>0);
+    return <div className="mx-auto max-w-xl"><div className="panel p-6 text-center"><LuSparkles aria-hidden className="mx-auto size-8 text-accent"/><p className="mt-2 font-display text-2xl font-semibold text-ink">Paket geschafft</p>
+      <p className="mt-1 text-muted">{items.length} {items[0].kind==='phrase'?'phrases':'items'} learned. They come back in SRS tomorrow.</p>
+      {hard.length?<div className="mt-4 rounded-lg bg-accent-soft/60 p-3 text-left"><p className="mb-1 font-mono text-xs uppercase tracking-wider text-accent">Watch these</p><ul className="space-y-0.5 text-sm">{hard.map(c=><li key={c.id} lang="de"><span className="font-medium text-ink">{c.front}</span> <span className="text-muted">{c.back}</span></li>)}</ul></div>:null}
+      <div className="mt-5 flex flex-wrap justify-center gap-2">{next?<button onClick={()=>onNext(next)} className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-medium text-on-accent">Next: {next.short||next.title}<LuArrowRight aria-hidden className="size-4"/></button>:null}
+        <button onClick={onBack} className="rounded-md border border-line px-4 py-2 text-ink hover:border-muted">Back to Roadmap</button></div></div></div>}
+  const {c,type}=step,v=c.kind==='verb'?verbOf(c):null;
+  const German=({big})=><span lang="de" className={`font-display font-semibold text-balance text-ink ${big?'text-4xl':'text-3xl'}`}>{c.art?<span className={c.art==='der'?'text-der':c.art==='die'?'text-die':'text-das'}>{c.art} </span>:null}{c.art?c.front.slice(c.art.length+1):c.front}</span>;
+  const optCls=o=>!res?'border-line bg-surface hover:border-accent':o===step.answer?'border-good bg-good-soft':o===chosen?'border-bad bg-bad-soft':'border-line bg-surface opacity-60';
+  const Options=({de})=><div className="mt-5 grid gap-2 sm:grid-cols-2">{step.options.map((o,k)=><button key={o} onClick={()=>choose(o)} disabled={!!res} lang={de?'de':'en'} className={`flex items-center gap-2.5 rounded-lg border px-3.5 py-3 text-left text-ink ${optCls(o)}`}><span className="grid size-6 shrink-0 place-items-center rounded bg-accent-soft font-mono text-xs text-accent">{k+1}</span><span className="min-w-0">{o}</span></button>)}</div>;
+  const prompt=(label,children)=><div className="text-center"><p className="font-mono text-xs uppercase tracking-wider text-muted">{label}</p><div className="mt-3 flex items-center justify-center gap-1">{children}</div></div>;
+  return <div className="mx-auto max-w-xl">{bar}
+    <div className="panel min-h-80 p-6">
+      {type==='meet'?<div className="text-center"><p className="font-mono text-xs uppercase tracking-wider text-accent">New {c.kind==='word'?(c.art?'noun':'word'):c.kind}</p>
+        <div className="mt-4 flex items-center justify-center gap-1"><German big/><SpeakBtn text={c.front}/></div>
+        <p className="mt-2 text-xl text-ink">{c.back}</p>
+        <p lang="de" className="mt-1 font-mono text-[13px] text-muted">{v?`${v.pr[2]} · ${v.pt[2]} · ${perfektOf(v)}`:c.sub}</p>
+        {c.ex?<p lang="de" className="mx-auto mt-5 flex max-w-md items-center justify-center gap-1 rounded-lg bg-accent-soft/60 px-3 py-2 text-ink">{c.ex}<SpeakBtn text={c.ex} size="size-4"/></p>:null}
+        <button onClick={()=>answer(true)} className="mt-6 w-full rounded-md bg-accent py-2.5 font-medium text-on-accent">Got it <span className="ml-1 text-xs opacity-75">Enter</span></button></div>
+      :type==='recog'?<>{prompt('What does it mean?',<><German/><SpeakBtn text={c.front}/></>)}<Options/></>
+      :type==='recall'?<>{prompt('How do you say it in German?',<span className="text-2xl font-semibold text-ink">{c.back}</span>)}<Options de/></>
+      :type==='perfekt'?<>{prompt('Perfekt · er/sie/es',<span lang="de" className="text-2xl font-semibold text-ink">{c.front}</span>)}<p className="mt-1 text-center text-muted">{c.back}</p><Options de/></>
+      :type==='type'?<>{prompt(c.art?'Type it in German, with der / die / das':'Type it in German',<span className="text-2xl font-semibold text-ink">{c.back}</span>)}
+        <form onSubmit={e=>{e.preventDefault();submitType()}} className="mt-5"><input ref={inputRef} id="learn-type" value={typed} onChange={e=>setTyped(e.target.value)} disabled={!!res} autoComplete="off" autoCapitalize="off" spellCheck="false" lang="de" className={`w-full rounded-lg border bg-surface px-4 py-3 text-center text-xl text-ink ${res?(res.ok?'border-good':'border-bad'):'border-line'}`}/>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">{['ä','ö','ü','ß'].map(ch=><button type="button" key={ch} onMouseDown={e=>e.preventDefault()} onClick={()=>{setTyped(t=>t+ch);inputRef.current?.focus()}} className="w-9 rounded border border-line bg-surface py-1 font-mono text-ink hover:border-muted">{ch}</button>)}
+          {!res?<button type="submit" disabled={!typed.trim()} className="ml-2 rounded-md bg-accent px-4 py-1.5 font-medium text-on-accent disabled:opacity-40">Check</button>:null}</div></form></>
+      :type==='tiles'?<>{prompt('Build the German sentence',<span className="text-xl font-semibold text-ink">{c.back}</span>)}
+        <div lang="de" className={`mt-5 flex min-h-14 flex-wrap gap-1.5 rounded-lg border-2 border-dashed p-2 ${res?(res.ok?'border-good':'border-bad'):'border-line'}`}>{picked.map((t,k)=><button key={t.k} disabled={!!res} onClick={()=>setPicked(p=>p.filter(x=>x.k!==t.k))} className="rounded-md bg-accent px-2.5 py-1.5 text-on-accent">{t.x}</button>)}</div>
+        <div lang="de" className="mt-3 flex flex-wrap justify-center gap-1.5">{step.tiles.map(t=>{const used=picked.some(p=>p.k===t.k);return <button key={t.k} disabled={used||!!res} onClick={()=>tap(t)} className={`rounded-md border px-2.5 py-1.5 ${used?'border-transparent bg-line/40 text-transparent':'border-line bg-surface text-ink hover:border-accent'}`}>{t.x}</button>})}</div></>:null}
+      {res?<div className={`mt-5 rounded-lg p-3 ${res.ok?'bg-good-soft':'bg-bad-soft'}`}>
+        <p className={`flex items-center gap-1.5 font-medium ${res.ok?'text-good':'text-bad'}`}>{res.ok?<LuCheck aria-hidden className="size-4"/>:<LuX aria-hidden className="size-4"/>}{res.ok?(res.note||'Richtig'):(res.note||'Not quite')}</p>
+        {!res.ok?<><p lang="de" className="mt-1 flex items-center gap-1 text-ink"><span className="font-semibold">{step.answer||c.front}</span><SpeakBtn text={c.front} size="size-4"/></p><p className="text-sm text-muted">{c.back} · it comes back in a moment</p>
+          <button onClick={()=>show(step.i)} className="mt-3 w-full rounded-md bg-ink py-2 font-medium text-bg">Continue <span className="ml-1 text-xs opacity-75">Enter</span></button></>:null}
+      </div>:null}
+    </div>
+    <p className="mt-3 hidden text-center text-sm text-muted sm:block">1–4 picks an answer · Enter continues</p></div>;
+}
+
+/* ---------- Roadmap: every task runs right here ---------- */
 const chunks=(a,n)=>Array.from({length:Math.ceil(a.length/n)},(_,k)=>a.slice(k*n,k*n+n));
+const balanced=(a,size)=>{const n=Math.max(1,Math.ceil(a.length/size));return Array.from({length:n},(_,k)=>a.slice(Math.floor(k*a.length/n),Math.floor((k+1)*a.length/n)))};
 export function roadmap(li,state){
-  const l=LESSONS[li], rm=state.roadmap?.[l.id]||{}, D=DECK.filter(c=>c.lesson===li);
-  const ids=p=>D.filter(c=>c.id.startsWith(`${l.id}:${p}:`)).map(c=>c.id);
-  const seen=a=>a.filter(id=>state.cards[id]).length;
+  const l=LESSONS[li], rm=state.roadmap?.[l.id]||{}, D=DECK.filter(c=>c.lesson===li), order=Object.keys(l.clusters);
   const dr=v=>state.drills?.[`${l.id}:v:${v.inf}`]||{};
   const core=v=>{const d=dr(v);return d.t&&d.pr===6&&(!d.sn||d.s===d.sn)};
   const past=v=>{const d=dr(v);return d.pt===6&&d.pf===6};
-  const read=(id,title,hint,tab)=>({id,title,hint,tab,manual:true,done:rm[id]?1:0,total:1});
+  const read=(id,title,hint,comp)=>({id,kind:'read',comp,title,hint,done:rm[id]?1:0,total:1});
   const vidx=v=>l.verbs.indexOf(v);
-  const exam=l.texts.filter(t=>!t.paras.length), reading=l.texts.filter(t=>t.paras.length);
-  const textTask=t=>{const r=state.texts[t.id];return {id:'text:'+t.id,title:t.title,hint:r?`Last score ${r.score}/${r.total}`:'Answer every question, then check',tab:'goethe',done:r?1:0,total:1}};
+  const packs=(arr,size,name,label)=>balanced(arr,size).map((g,k)=>({id:`learn:${name}:${k}`,kind:'learn',ids:g.map(c=>c.id),short:`${label} ${k+1}`,
+    title:`${label} ${k+1}`,hint:name==='phrases'?`${g.length} phrases · build them from word tiles`:`${g.map(c=>c.key).slice(0,4).join(', ')}${g.length>4?' …':''}`,done:g.filter(c=>isLearned(state,c.id)).length,total:g.length}));
+  const words=D.filter(c=>c.kind==='word').sort((a,b)=>order.indexOf(a.c)-order.indexOf(b.c));
+  const textTask=t=>{const r=state.texts[t.id];return {id:'text:'+t.id,kind:'text',textId:t.id,title:t.title,hint:r?`Last score ${r.score}/${r.total}`:'Read, answer, check',done:r?1:0,total:1}};
+  const train=(g,k,pre,tense)=>({id:`${pre}:${k}`,kind:'training',only:g.map(vidx),tense,start:vidx(g.find(v=>!(tense==='pt'?past(v):core(v)))??g[0]),
+    title:tense==='pt'?`Past forms ${vidx(g[0])+1}–${vidx(g[g.length-1])+1}`:`Use verbs ${vidx(g[0])+1}–${vidx(g[g.length-1])+1}`,
+    hint:tense==='pt'?'Präteritum 6/6 and Perfekt 6/6 per verb':'Meaning, Präsens 6/6 and sentences per verb',done:g.filter(tense==='pt'?past:core).length,total:g.length});
   const all=D.map(c=>c.id), target=Math.ceil(all.length*.8);
   const stages=[
-    {t:'Überblick',en:'Get the big picture',tasks:[
-      read('read:verben','Skim the verb list','Open a few rows and look at the forms','verben'),
-      read('read:redemittel','Read the phrases','Say each one out loud once','redemittel'),
-      read('read:vokabeln','Read nouns & adjectives','Notice the der / die / das colours','vokabeln')]},
-    {t:'Wörter einprägen',en:'Meet every card once',tasks:[
-      {id:'srs:n',title:'Meet every noun in SRS',hint:'Cards count when you rate them',tab:'srs',done:seen(ids('n')),total:ids('n').length},
-      {id:'srs:m',title:'Meet adjectives and adverbs',hint:'Filter SRS to Words',tab:'srs',done:seen(ids('m')),total:ids('m').length},
-      {id:'srs:p',title:'Meet every phrase',hint:'Filter SRS to Phrases',tab:'srs',done:seen(ids('p')),total:ids('p').length}]},
-    {t:'Verben trainieren',en:'Meaning, Präsens and sentences',tasks:chunks(l.verbs,6).map((g,k)=>({id:'verbs:'+k,title:`Verbs ${vidx(g[0])+1}–${vidx(g[g.length-1])+1}: ${g.map(v=>clean(v.inf)).slice(0,3).join(', ')}…`,hint:'In Training: meaning, Präsens 6/6, all sentences',tab:'training',verb:vidx(g.find(v=>!core(v))??g[0]),done:g.filter(core).length,total:g.length}))},
-    {t:'Grammatik & Fehler',en:'Understand the structures',tasks:[
-      read('read:grammatik','Work through the grammar cards','Read each rule and its examples','grammatik'),
-      read('read:fehler','Read the common mistakes','Cover the right answer and test yourself','fehler'),
-      ...exam.map(textTask)]},
-    {t:'Vergangenheit',en:'Präteritum and Perfekt',tasks:chunks(l.verbs,12).map((g,k)=>({id:'past:'+k,title:`Past forms, verbs ${vidx(g[0])+1}–${vidx(g[g.length-1])+1}`,hint:'In Training: Präteritum 6/6 and Perfekt 6/6',tab:'training',verb:vidx(g.find(v=>!past(v))??g[0]),done:g.filter(past).length,total:g.length}))},
-    {t:'Goethe B2',en:'Exam-style reading',tasks:reading.map(textTask)},
-    {t:'Festigen',en:'Make it stick',tasks:[
-      {id:'srs:box2',title:'Get 80% of cards to box 2',hint:'Box 2 means two good reviews on different days',tab:'srs',done:Math.min(target,all.filter(id=>(state.cards[id]?.box||0)>=2).length),total:target},
-      read('read:cheat','Read the Spickzettel','Your one-page summary for later','spickzettel')]},
+    {t:'Start',en:'Watch and listen',tasks:[{id:'watch',kind:'watch',title:'Watch the video once',hint:'German subtitles on, no pausing',done:rm.watch?1:0,total:1},read('read:redemittel','Read the phrases','Say each one out loud','redemittel')]},
+    {t:'Wörter lernen',en:'Small packs, about 5 minutes each',tasks:packs(words,8,'words','Wortpaket')},
+    {t:'Verben lernen',en:'Meaning, spelling and Perfekt',tasks:packs(D.filter(c=>c.kind==='verb'),6,'verbs','Verbpaket')},
+    {t:'Verben anwenden',en:'Conjugate and write sentences',tasks:chunks(l.verbs,6).map((g,k)=>train(g,k,'verbs'))},
+    {t:'Redemittel lernen',en:'Whole sentences for real situations',tasks:packs(D.filter(c=>c.kind==='phrase'),7,'phrases','Phrasenpaket')},
+    {t:'Grammatik & Fehler',en:'Understand the structures',tasks:[read('read:grammatik','Grammar cards','Read each rule and its examples','grammatik'),read('read:fehler','Common mistakes','Cover the right answer and test yourself','fehler'),...l.texts.filter(t=>!t.paras.length).map(textTask)]},
+    {t:'Vergangenheit',en:'Präteritum and Perfekt',tasks:chunks(l.verbs,12).map((g,k)=>train(g,k,'past','pt'))},
+    {t:'Goethe B2',en:'Exam-style reading',tasks:l.texts.filter(t=>t.paras.length).map(textTask)},
+    {t:'Festigen',en:'Make it stick',tasks:[{id:'srs:box2',kind:'srs',title:'Get 80% of cards to box 2',hint:'Review daily; box 2 means two good reviews',done:Math.min(target,all.filter(id=>(state.cards[id]?.box||0)>=2).length),total:target},read('read:cheat','Read the Spickzettel','Your one-page summary for later','cheat')]},
   ];
+  stages.forEach(x=>{x.complete=x.tasks.every(k=>k.done>=k.total);x.n=x.tasks.filter(k=>k.done>=k.total).length;x.tasks.forEach(k=>k.stage=x.t)});
   const tasks=stages.flatMap(x=>x.tasks), frac=x=>Math.min(1,x.done/x.total);
-  stages.forEach(x=>{x.complete=x.tasks.every(k=>k.done>=k.total);x.n=x.tasks.filter(k=>k.done>=k.total).length});
   return {stages,tasks,doneTasks:tasks.filter(k=>k.done>=k.total).length,pct:Math.round(tasks.reduce((a,k)=>a+frac(k),0)/tasks.length*100),current:stages.findIndex(x=>!x.complete)};
 }
+const todayLearned=s=>s.learnDay===dayStr()?s.learnCount||0:0;
+function GoalMeter({state,update}){
+  const goal=state.goal||30,n=todayLearned(state);
+  return <div data-hue="tangerine" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><LuTarget aria-hidden className="size-4 text-accent"/><span className="text-muted">Today</span><span className="font-mono tabular-nums text-ink">{n} / {goal} new</span>
+    <span className="h-2 w-28 rounded-full bg-accent-soft"><span className="block h-2 rounded-full bg-accent" style={{width:`${Math.min(1,n/goal)*100}%`}}/></span>
+    <label htmlFor="goal" className="sr-only">Daily goal</label><select id="goal" value={goal} onChange={e=>update(s=>({...s,goal:+e.target.value}))} className="rounded border border-line bg-surface px-1.5 py-0.5 text-ink">{[20,30,40,50].map(g=><option key={g} value={g}>Goal {g}</option>)}</select></div>;
+}
+const READ={redemittel:Phrases,vokabeln:Vocab,grammatik:Grammar,fehler:Mistakes};
 function Roadmap({li,state,update,go}){
   const r=roadmap(li,state), l=LESSONS[li];
   const [open,setOpen]=useState(()=>new Set([Math.max(0,r.current)]));
+  const [active,setActive]=useState(null);
   const toggle=k=>setOpen(o=>{const n=new Set(o);n.has(k)?n.delete(k):n.add(k);return n});
   const mark=(id,v)=>update(s=>({...s,roadmap:{...s.roadmap,[l.id]:{...(s.roadmap?.[l.id]||{}),[id]:v}}}));
+  const start=t=>{setActive(t.id);scrollTo(0,0)};
+  const back=()=>{setActive(null);scrollTo(0,0)};
   const next=r.tasks.find(k=>k.done<k.total);
+  const after=id=>{const k=r.tasks.findIndex(t=>t.id===id);return r.tasks.slice(k+1).find(t=>t.done<t.total)};
+  const task=active&&r.tasks.find(t=>t.id===active);
+  if(task){const nx=after(task.id),ok=task.done>=task.total;
+    const btn='inline-flex items-center gap-1.5 rounded-md px-4 py-2 font-medium';
+    const footer=(label,act)=><div className="panel mt-6 flex flex-wrap items-center justify-between gap-3 p-4"><span className="text-sm text-muted">{ok?'Task done.':label}</span><div className="flex flex-wrap gap-2">
+      {act&&!ok?<button onClick={act} className={`${btn} bg-accent text-on-accent`}><LuCheck aria-hidden className="size-4"/>{label}</button>:null}
+      {ok&&nx?<button onClick={()=>start(nx)} className={`${btn} bg-accent text-on-accent`}>Next: {nx.short||nx.title}<LuArrowRight aria-hidden className="size-4"/></button>:null}
+      <button onClick={back} className={`${btn} border border-line text-ink`}>Roadmap</button></div></div>;
+    const Read=READ[task.comp];
+    return <section>
+      <div className="mb-6 flex flex-wrap items-center gap-3"><button onClick={back} className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink hover:border-muted"><LuChevronLeft aria-hidden className="size-4"/>Roadmap</button>
+        <span className="min-w-0 font-mono text-xs uppercase tracking-wider text-accent">{task.stage} · {task.title}</span>{task.kind==='learn'?<span className="ml-auto"><GoalMeter state={state} update={update}/></span>:null}</div>
+      {task.kind==='learn'?<LearnSession key={task.id} ids={task.ids} state={state} update={update} onBack={back} next={nx} onNext={start}/>
+      :task.kind==='watch'?<><div className="panel mx-auto max-w-xl p-6 text-center"><LuCirclePlay aria-hidden className="mx-auto size-10 text-accent"/><p className="mt-2 font-display text-xl font-semibold text-ink">{l.title}</p><p className="text-muted">{l.series} · {l.length}</p>
+          <a href={l.url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-medium text-on-accent"><LuExternalLink aria-hidden className="size-4"/>Open on YouTube</a></div>{footer('I watched it',()=>mark('watch',true))}</>
+      :task.kind==='read'?<>{task.comp==='cheat'?<Cheat lesson={l} go={go}/>:<Read lesson={l}/>}{footer('Done reading',()=>mark(task.id,true))}</>
+      :task.kind==='training'?<><Training key={task.id} lesson={l} state={state} update={update} only={task.only} start={task.start} startTense={task.tense}/>{footer(`${task.done}/${task.total} verbs finished`)}</>
+      :task.kind==='text'?<><Practice key={task.id} lesson={l} state={state} update={update} only={task.textId}/>{footer('Check your answers to finish')}</>
+      :<><SRS state={state} update={update} li={li}/>{footer(`${task.done}/${task.total} cards in box 2`)}</>}
+    </section>;
+  }
   const finished=r.current===-1;
-  return <section><Head de="Roadmap" title="Seven stages · work in the other tabs ticks tasks off by itself"/>
+  return <section><Head de="Roadmap" title="Do every task right here · progress from other tabs counts too"/>
     <div className="panel mb-5 grid items-center gap-5 p-5 sm:grid-cols-[auto_1fr_auto]">
       <svg viewBox="0 0 64 64" className="size-20" role="img" aria-label={`Roadmap ${r.pct}% complete`}><circle cx="32" cy="32" r="27" fill="none" stroke="var(--accent-soft)" strokeWidth="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${r.pct*1.696} 170`} transform="rotate(-90 32 32)"/><text x="32" y="37" textAnchor="middle" fontSize="15" fontWeight="700" fill="var(--ink)" className="font-sans">{r.pct}%</text></svg>
-      <div className="min-w-0">{finished?<><p className="flex items-center gap-2 font-display text-xl font-semibold text-ink"><LuTrophy aria-hidden className="size-5 text-accent"/>Lektion abgeschlossen</p><p className="text-muted">You have learned this video. From now on, refresh with the Spickzettel and keep up your SRS reviews.</p></>
-        :<><p className="font-mono text-xs uppercase tracking-wider text-accent">Stage {r.current+1} of {r.stages.length} · {r.doneTasks}/{r.tasks.length} tasks</p><p className="font-display text-xl font-semibold text-ink">{r.stages[r.current].t}</p><p className="text-muted">Next: {next.title}</p></>}</div>
+      <div className="min-w-0 space-y-1">{finished?<><p className="flex items-center gap-2 font-display text-xl font-semibold text-ink"><LuTrophy aria-hidden className="size-5 text-accent"/>Lektion abgeschlossen</p><p className="text-muted">Refresh with the Spickzettel and keep up your SRS reviews.</p></>
+        :<><p className="font-mono text-xs uppercase tracking-wider text-accent">Stage {r.current+1} of {r.stages.length} · {r.doneTasks}/{r.tasks.length} tasks</p><p className="font-display text-xl font-semibold text-ink">Next: {next.title}</p><p className="text-sm text-muted">{next.hint}</p></>}
+        <div className="pt-1"><GoalMeter state={state} update={update}/></div></div>
       {finished?<button onClick={()=>go('spickzettel')} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 font-medium text-on-accent">Open Spickzettel<LuArrowRight aria-hidden className="size-4"/></button>
-      :<button onClick={()=>go(next.tab,{verb:next.verb})} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 font-medium text-on-accent">Continue<LuArrowRight aria-hidden className="size-4"/></button>}
+      :<button onClick={()=>start(next)} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-medium text-on-accent"><LuPlay aria-hidden className="size-4"/>Start</button>}
     </div>
     <ol className="relative space-y-3 before:absolute before:left-[1.15rem] before:top-4 before:bottom-4 before:w-0.5 before:bg-line">{r.stages.map((x,k)=>{const isOpen=open.has(k),cur=k===r.current;
       return <li key={x.t} className="relative pl-11">
@@ -420,14 +554,12 @@ function Roadmap({li,state,update,go}){
             <span className="min-w-0"><span className="block font-display text-lg font-semibold text-ink">{x.t}</span><span className="block text-sm text-muted">{x.en}</span></span>
             <span className="flex shrink-0 items-center gap-2"><span className={`font-mono text-sm ${x.complete?'text-accent':'text-muted'}`}>{x.n}/{x.tasks.length}</span><LuChevronDown aria-hidden className={`size-4 text-muted transition-transform ${isOpen?'rotate-180':''}`}/></span></button>
           {isOpen?<ul className="divide-y divide-line border-t border-line px-4">{x.tasks.map(t=>{const ok=t.done>=t.total;return <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-3">
-            {t.manual?<button aria-pressed={ok} aria-label={ok?`Mark "${t.title}" as not done`:`Mark "${t.title}" as done`} onClick={()=>mark(t.id,!ok)} className="shrink-0">{ok?<LuCircleCheck aria-hidden className="size-5 text-accent"/>:<LuCircle aria-hidden className="size-5 text-line-strong hover:text-accent"/>}</button>
-              :ok?<LuCircleCheck aria-hidden className="size-5 shrink-0 text-accent"/>:<LuCircle aria-hidden className="size-5 shrink-0 text-line-strong"/>}
-            <span className="min-w-0 flex-1"><span className={`block ${ok?'text-muted line-through decoration-1':'text-ink'}`}>{t.title}</span><span className="block text-[13px] text-muted">{t.hint}</span></span>
-            {t.total>1?<span className="w-28"><span className="flex justify-between font-mono text-[11px] text-muted"><span>{Math.min(t.done,t.total)}</span><span>{t.total}</span></span><span className="mt-0.5 block h-1.5 rounded-full bg-accent-soft"><span className="block h-1.5 rounded-full bg-accent" style={{width:`${Math.min(1,t.done/t.total)*100}%`}}/></span></span>:null}
-            <button data-hue={HUE[t.tab]} onClick={()=>go(t.tab,{verb:t.verb})} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm text-accent hover:border-accent">Open<LuArrowRight aria-hidden className="size-3.5"/></button>
+            {ok?<LuCircleCheck aria-hidden className="size-5 shrink-0 text-accent"/>:<LuCircle aria-hidden className="size-5 shrink-0 text-line-strong"/>}
+            <span className="min-w-0 flex-1"><span className={`block ${ok?'text-muted':'text-ink'}`}>{t.title}</span><span lang="de" className="block text-[13px] text-muted">{t.hint}</span></span>
+            {t.total>1?<span className="w-24"><span className="flex justify-between font-mono text-[11px] text-muted"><span>{Math.min(t.done,t.total)}</span><span>{t.total}</span></span><span className="mt-0.5 block h-1.5 rounded-full bg-accent-soft"><span className="block h-1.5 rounded-full bg-accent" style={{width:`${Math.min(1,t.done/t.total)*100}%`}}/></span></span>:null}
+            <button onClick={()=>start(t)} className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium ${ok?'border border-line text-muted hover:text-ink':'bg-accent text-on-accent'}`}>{ok?<><LuRefreshCw aria-hidden className="size-3.5"/>Again</>:<><LuPlay aria-hidden className="size-3.5"/>Start</>}</button>
           </li>})}</ul>:null}
         </div></li>})}</ol>
-    <p className="mt-4 text-sm text-muted">Tasks with a circle you can tap are reading tasks: tick them yourself. Everything else ticks when you finish it in its tab.</p>
   </section>;
 }
 
@@ -463,8 +595,9 @@ const HUE={roadmap:'indigo',spickzettel:'magenta',verben:'cyan',training:'tanger
 const HOME_TABS=[['lektionen','Lektionen',LuBookOpen],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
 const Meter=({label,value,max,note,hue,pct})=><div data-hue={hue} className="min-w-0"><div className="flex items-baseline justify-between gap-2"><span className="text-[13px] text-muted">{label}</span><span className="font-mono text-sm tabular-nums whitespace-nowrap text-ink">{value}{pct?'%':max!=null?` / ${max}`:''}</span></div>
   {max!=null?<div className="mt-1.5 h-2 rounded-full bg-accent-soft"><div className="h-2 rounded-full bg-accent" style={{width:`${value/max*100}%`}}/></div>:<div className="mt-1 text-xs text-muted">{note}</div>}</div>;
-function Home({state}){
+function Home({state,update}){
   return <section><Head de="Lektionen" title="One dashboard per video · reviews and streak are shared"/>
+    <div className="panel mb-4 px-5 py-3"><GoalMeter state={state} update={update}/></div>
     <ul className="panel divide-y divide-line px-5">{LESSONS.map((l,i)=>{const s=stats(state,i);return <li key={l.id}><a href={pageHref(l)} className="grid gap-x-6 gap-y-2 py-4 hover:text-accent sm:grid-cols-[1fr_16rem]"><span className="min-w-0"><span className="font-mono text-xs text-accent">Lektion {String(i+1).padStart(2,'0')} · {l.series} · {l.length}</span><span className="block font-display text-lg font-semibold text-ink">{l.title}</span><span className="block text-sm text-muted">{l.topic}</span></span><span className="self-center space-y-2"><Meter hue="indigo" pct label="Roadmap" value={roadmap(i,state).pct} max={100}/><Meter hue="blue" label="Cards started" value={s.seen} max={s.total}/></span></a></li>})}</ul></section>;
 }
 function App(){
@@ -493,7 +626,7 @@ function App(){
       <nav aria-label="Sections" className="mx-auto max-w-6xl overflow-x-auto px-gutter"><div className="flex w-max gap-1">{TABS.map(([k,t,I])=><button key={k} data-hue={HUE[k]} aria-current={tab===k?'page':undefined} onClick={()=>go(k)} className={`flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-2.5 py-2.5 text-sm ${tab===k?'border-accent font-semibold text-ink':'border-transparent text-muted hover:text-ink'}`}><I aria-hidden className="size-4 text-accent"/>{t}</button>)}</div></nav>
     </header>
     <main data-hue={HUE[tab]} className="mx-auto max-w-6xl px-gutter py-8">
-      {tab==='lektionen'?<Home state={state}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='roadmap'?<Roadmap li={li} state={state} update={update} go={go}/>:tab==='spickzettel'?<Cheat lesson={lesson} go={go}/>:tab==='training'?<Training key={focus.n||0} start={focus.verb} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Practice lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
+      {tab==='lektionen'?<Home state={state} update={update}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='roadmap'?<Roadmap key={focus.n||0} li={li} state={state} update={update} go={go}/>:tab==='spickzettel'?<Cheat lesson={lesson} go={go}/>:tab==='training'?<Training key={focus.n||0} start={focus.verb} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Practice lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
     </main>
   </div>;
 }
