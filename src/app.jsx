@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useMemo,useRef,useCallback} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle,LuRoute,LuStickyNote,LuCircle,LuCircleCheck,LuArrowRight,LuEye,LuEyeOff,LuTrophy,LuVolume2,LuVolumeX,LuSparkles,LuTarget,LuCirclePlay,LuRefreshCw,LuTimer,LuLanguages,LuBlend} from 'react-icons/lu';
+import {LuBookOpen,LuMessageSquare,LuTag,LuGitBranch,LuFileCheck,LuTriangleAlert,LuLayers,LuChartColumn,LuSearch,LuChevronDown,LuCheck,LuX,LuExternalLink,LuFlame,LuPackage,LuRotateCcw,LuPlay,LuHouse,LuDownload,LuUpload,LuDumbbell,LuChevronLeft,LuChevronRight,LuShuffle,LuRoute,LuStickyNote,LuCircle,LuCircleCheck,LuArrowRight,LuEye,LuEyeOff,LuTrophy,LuVolume2,LuVolumeX,LuSparkles,LuTarget,LuCirclePlay,LuRefreshCw,LuTimer,LuLanguages,LuBlend,LuScrollText,LuPencil} from 'react-icons/lu';
 import {LESSONS} from './lessons/index.js';
 
 /* ---------- dates and spaced repetition ---------- */
@@ -36,7 +36,7 @@ const DECK=LESSONS.flatMap((l,li)=>[
 ]);
 
 /* ---------- persistence: this browser, shared by every page of the site ---------- */
-const EMPTY={mix:null,time:{},days:{},finished:{},cards:{},texts:{},drills:{},roadmap:{},learned:{},goal:30,learnDay:null,learnCount:0,streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
+const EMPTY={lesen:{},transcripts:{},mix:null,time:{},days:{},finished:{},cards:{},texts:{},drills:{},roadmap:{},learned:{},goal:30,learnDay:null,learnCount:0,streak:0,lastDay:null,newDay:null,newCount:0,updatedAt:0};
 const LS='eg-wortbank-v1';
 const readLocal=()=>{try{return JSON.parse(localStorage.getItem(LS))}catch{return null}};
 const writeLocal=s=>{try{localStorage.setItem(LS,JSON.stringify(s))}catch{}};
@@ -320,11 +320,11 @@ function Graph({state,li}){
 /* ---------- Fortschritt ---------- */
 function stats(state,li){
   const today=dayStr(); const c=id=>state.cards[id];
-  const D=li==null?DECK:DECK.filter(x=>x.lesson===li), TX=li==null?LESSONS.flatMap(l=>l.texts):LESSONS[li].texts;
+  const D=li==null?DECK:DECK.filter(x=>x.lesson===li), TX=li==null?LESSONS.flatMap(l=>l.texts):LESSONS[li].texts, LZ=li==null?LESSONS.flatMap(l=>l.lesen||[]):LESSONS[li].lesen||[];
   const of=k=>D.filter(x=>x.kind===k);
   const words=[...of('word'),...of('verb')];
   return {words:words.length,wordsDone:words.filter(x=>c(x.id)?.mastered).length,phrases:of('phrase').length,phrasesDone:of('phrase').filter(x=>(c(x.id)?.box||0)>=3).length,
-    texts:TX.length,textsDone:TX.filter(t=>state.texts[t.id]).length,total:D.length,
+    texts:TX.length+LZ.length,textsDone:TX.filter(t=>state.texts[t.id]).length+LZ.filter(t=>state.lesen?.[t.id]).length,total:D.length,
     due:D.filter(x=>c(x.id)&&c(x.id).due<=today).length,seen:D.filter(x=>c(x.id)).length,
     streak:(state.lastDay===today||state.lastDay===addDays(today,-1))?state.streak:0};
 }
@@ -372,12 +372,12 @@ const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floo
 const lev=(a,b)=>{const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]};
 const verbOf=c=>LESSONS[c.lesson].verbs.find(v=>v.inf===c.front);
 const perfektOf=v=>`${v.aux} ${v.refl?'sich ':''}${v.pp}`;
-const STEPS=c=>c.kind==='verb'?['meet','recog','recall','type','perfekt']:c.kind==='phrase'?['meet','recog','tiles']:['meet','recog','recall','type'];
+const STEPS=c=>c.kind==='verb'?['meet','recog','recall','perfekt']:c.kind==='phrase'?['meet','tiles']:['meet','recog','recall'];
 export const isLearned=(state,id)=>!!state.learned?.[id]||(state.cards[id]?.box||0)>=1;
 const others=c=>DECK.filter(x=>x.lesson===c.lesson&&x.kind===c.kind&&x.id!==c.id);
 const nrm=s=>fold(s.replace(/·/g,''));
 function buildStep(c,type){
-  if(type==='recog')return {options:shuffle([c.back,...shuffle(others(c).map(x=>x.back).filter(b=>b!==c.back)).slice(0,3)]),answer:c.back};
+  if(type==='recog')return {listen:audioOn()&&!!window.speechSynthesis&&Math.random()<.5,options:shuffle([c.back,...shuffle(others(c).map(x=>x.back).filter(b=>b!==c.back)).slice(0,3)]),answer:c.back};
   if(type==='recall'){let ds=shuffle(others(c)).slice(0,3).map(x=>x.front);
     if(c.art){const rest=c.front.slice(c.art.length+1),wrong=shuffle(['der','die','das'].filter(a=>a!==c.art))[0];ds=[`${wrong} ${rest}`,...ds.slice(0,2)]}
     return {options:shuffle([c.front,...ds]),answer:c.front}}
@@ -414,12 +414,13 @@ function LearnSession({ids,cards,review,state,update,onBack,next,onNext,onFinish
   const commit=id=>update(s=>{const today=dayStr(),first=!s.learned?.[id],b=bumpStreak(s,today);
     return {...b,learned:{...(s.learned||{}),[id]:today},cards:s.cards[id]?s.cards:{...s.cards,[id]:{box:0,reps:1,due:addDays(today,1),last:today}},learnDay:today,learnCount:(s.learnDay===today?s.learnCount||0:0)+(first?1:0)}});
   const commitReview=(c,miss)=>update(s=>{const today=dayStr(),b=bumpStreak(s,today);return c.kind==='grammar'||c.kind==='mistake'?b:{...b,cards:{...s.cards,[c.id]:rate(s.cards[c.id],miss?'again':'good',today)}}});
+  const known=()=>{const {i,c}=step;progRef.current[i].lvl=S(c).length-1;show(i)};
   const answer=(ok,note)=>{if(res||!step||step.done)return;const {i,c,type}=step,x=progRef.current[i],max=S(c).length;
     x.lvl=review?(ok?1:0):ok?x.lvl+1:Math.max(1,x.lvl-1);if(!ok)x.miss++;force(n=>n+1);
     if(ok&&x.lvl>=max)(review?commitReview(c,x.miss):commit(c.id));
     if(type==='meet'){show(i);return}
     setRes({ok,note});if(type!=='recog'&&c.front)say(c.front);
-    if(ok)timer.current=setTimeout(()=>show(i),note?1600:850)};
+    if(ok)timer.current=setTimeout(()=>show(i),note?1600:step.listen?1300:650)};
   const choose=o=>{if(res)return;setChosen(o);answer(o===step.answer)};
   const submitType=()=>{if(!typed.trim()||res)return;const want=step.c.front,a=nrm(typed),b=nrm(want);
     if(a===b)return answer(true);
@@ -450,20 +451,20 @@ function LearnSession({ids,cards,review,state,update,onBack,next,onNext,onFinish
   const prompt=(label,children)=><div className="text-center"><p className="font-mono text-xs uppercase tracking-wider text-muted">{label}</p><div className="mt-3 flex items-center justify-center gap-1">{children}</div></div>;
   return <div className="mx-auto max-w-xl">{bar}
     <div className="panel min-h-80 p-6">
-      {c.img&&type!=='meet'?<div aria-hidden className="mb-3 text-center text-5xl">{c.img}</div>:null}
+      {c.img&&type!=='meet'&&(!step.listen||res)?<div aria-hidden className="mb-3 text-center text-5xl">{c.img}</div>:null}
       {review&&c.lesson!=null?<p className="mb-2 text-center font-mono text-[11px] text-muted">Lektion {String(c.lesson+1).padStart(2,'0')} · {LESSONS[c.lesson].title}</p>:null}
       {type==='meet'?<div className="text-center">{c.img?<div aria-hidden className="mb-2 text-6xl">{c.img}</div>:null}<p className="font-mono text-xs uppercase tracking-wider text-accent">New {c.kind==='word'?(c.art?'noun':'word'):c.kind}</p>
         <div className="mt-4 flex items-center justify-center gap-1"><German big/><SpeakBtn text={c.front}/></div>
         <p className="mt-2 text-xl text-ink">{c.back}</p>
         <p lang="de" className="mt-1 font-mono text-[13px] text-muted">{v?`${v.pr[2]} · ${v.pt[2]} · ${perfektOf(v)}`:c.sub}</p>
         {c.ex?<p lang="de" className="mx-auto mt-5 flex max-w-md items-center justify-center gap-1 rounded-lg bg-accent-soft/60 px-3 py-2 text-ink">{c.ex}<SpeakBtn text={c.ex} size="size-4"/></p>:null}
-        <button onClick={()=>answer(true)} className="mt-6 w-full rounded-md bg-accent py-2.5 font-medium text-on-accent">Got it <span className="ml-1 text-xs opacity-75">Enter</span></button></div>
+        <button onClick={known} className="mt-6 mb-2 w-full rounded-md border border-line py-2 text-sm text-muted hover:border-accent hover:text-ink">I know it already · one quick check</button><button onClick={()=>answer(true)} className="w-full rounded-md bg-accent py-2.5 font-medium text-on-accent">Got it <span className="ml-1 text-xs opacity-75">Enter</span></button></div>
       :type==='grammar'?<div className="text-center"><p className="font-mono text-xs uppercase tracking-wider text-muted">Grammar refresh · can you explain it?</p><p className="mt-3 font-display text-2xl font-semibold text-ink">{c.g.t}</p>
         {!shown?<button onClick={()=>setShown(true)} className="mt-6 w-full rounded-md bg-accent py-2.5 font-medium text-on-accent">Show the rule</button>
         :<div className="mt-4 text-left"><p className="text-ink/85">{c.g.r}</p><dl className="mt-3 space-y-1.5 rounded-lg bg-accent-soft/50 p-3 text-sm">{c.g.ex.map(([de,en])=><div key={de} className="grid gap-x-4 sm:grid-cols-2"><dt lang="de" className="font-mono text-[13px] text-ink">{de}</dt><dd className="text-muted">{en}</dd></div>)}</dl>
           {!res?<div className="mt-4 grid grid-cols-2 gap-2"><button onClick={()=>answer(false)} className="rounded-md border border-bad/40 bg-bad-soft py-2 text-bad">I forgot</button><button onClick={()=>answer(true)} className="rounded-md border border-good/40 bg-good-soft py-2 text-good">I remembered</button></div>:null}</div>}</div>
       :type==='mistake'?<>{prompt('Which one is correct?',<Chip>{c.m.k}</Chip>)}<Options de/>{res?<p className="mt-3 text-sm text-muted">{c.m.why}</p>:null}</>
-      :type==='recog'?<>{prompt('What does it mean?',<><German/><SpeakBtn text={c.front}/></>)}<Options/></>
+      :type==='recog'?<>{step.listen?prompt('Listen · what does it mean?',<button onClick={()=>say(c.front)} aria-label="Play again" className="grid size-20 place-items-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-on-accent"><LuVolume2 aria-hidden className="size-9"/></button>):prompt('What does it mean?',<><German/><SpeakBtn text={c.front}/></>)}{step.listen&&res?<p lang="de" className="mt-2 text-center font-display text-2xl font-semibold text-ink">{c.front}</p>:null}<Options/></>
       :type==='recall'?<>{prompt('How do you say it in German?',<span className="text-2xl font-semibold text-ink">{c.back}</span>)}<Options de/></>
       :type==='perfekt'?<>{prompt('Perfekt · er/sie/es',<span lang="de" className="text-2xl font-semibold text-ink">{c.front}</span>)}<p className="mt-1 text-center text-muted">{c.back}</p><Options de/></>
       :type==='type'?<>{prompt(c.art?'Type it in German, with der / die / das':'Type it in German',<span className="text-2xl font-semibold text-ink">{c.back}</span>)}
@@ -501,14 +502,12 @@ export function roadmap(li,state){
     hint:tense==='pt'?'Präteritum 6/6 and Perfekt 6/6 per verb':'Meaning, Präsens 6/6 and sentences per verb',done:g.filter(tense==='pt'?past:core).length,total:g.length});
   const all=D.map(c=>c.id), target=Math.ceil(all.length*.8);
   const stages=[
-    {t:'Start',en:'Watch and listen',tasks:[{id:'watch',kind:'watch',title:'Watch the video once',hint:'German subtitles on, no pausing',done:rm.watch?1:0,total:1},read('read:redemittel','Read the phrases','Say each one out loud','redemittel')]},
-    {t:'Wörter lernen',en:'Small packs, about 5 minutes each',tasks:packs(words,8,'words','Wortpaket')},
-    {t:'Verben lernen',en:'Meaning, spelling and Perfekt',tasks:packs(D.filter(c=>c.kind==='verb'),6,'verbs','Verbpaket')},
-    {t:'Verben anwenden',en:'Conjugate and write sentences',tasks:chunks(l.verbs,6).map((g,k)=>train(g,k,'verbs'))},
+    {t:'Start',en:'Watch, then read along',tasks:[{id:'watch',kind:'watch',title:'Watch the video once',hint:'German subtitles on, no pausing',done:rm.watch?1:0,total:1},{id:'read:transcript',kind:'transcript',title:'Read the transcript',hint:'Tap underlined words for a translation',done:rm['read:transcript']?1:0,total:1}]},
+    {t:'Wörter lernen',en:'Small packs, about 5 minutes each',tasks:packs(words,10,'words','Wortpaket')},
+    {t:'Verben lernen',en:'Meaning and Perfekt, all by tapping',tasks:packs(D.filter(c=>c.kind==='verb'),8,'verbs','Verbpaket')},
     {t:'Redemittel lernen',en:'Whole sentences for real situations',tasks:packs(D.filter(c=>c.kind==='phrase'),7,'phrases','Phrasenpaket')},
     {t:'Grammatik & Fehler',en:'Understand the structures',tasks:[read('read:grammatik','Grammar cards','Read each rule and its examples','grammatik'),read('read:fehler','Common mistakes','Cover the right answer and test yourself','fehler'),...l.texts.filter(t=>!t.paras.length).map(textTask)]},
-    {t:'Vergangenheit',en:'Präteritum and Perfekt',tasks:chunks(l.verbs,12).map((g,k)=>train(g,k,'past','pt'))},
-    {t:'Goethe B2',en:'Exam-style reading',tasks:l.texts.filter(t=>t.paras.length).map(textTask)},
+    {t:'Lesen · Goethe B2',en:'Exam format: 5 Teile, then extra texts',tasks:[...(l.lesen||[]).map(t=>{const r=state.lesen?.[t.id];return {id:'lesen:'+t.id,kind:'lesen',teilId:t.id,short:`Lesen Teil ${t.teil}`,title:`Teil ${t.teil}: ${t.title}`,hint:r?`Last score ${r.score}/${r.total} in ${fmtClock(r.secs||0)}`:`${t.items.length} items · ${t.minutes} min`,done:r?1:0,total:1}}),...l.texts.filter(t=>t.paras.length).map(textTask)]},
     {t:'Festigen',en:'Make it stick',tasks:[{id:'srs:box2',kind:'srs',title:'Get 80% of cards to box 2',hint:'Review daily; box 2 means two good reviews',done:Math.min(target,all.filter(id=>(state.cards[id]?.box||0)>=2).length),total:target},read('read:cheat','Read the Spickzettel','Your one-page summary for later','cheat')]},
   ];
   stages.forEach(x=>{x.complete=x.tasks.every(k=>k.done>=k.total);x.n=x.tasks.filter(k=>k.done>=k.total).length;x.tasks.forEach(k=>k.stage=x.t)});
@@ -549,6 +548,8 @@ function Roadmap({li,state,update,go}){
           <a href={l.url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-medium text-on-accent"><LuExternalLink aria-hidden className="size-4"/>Open on YouTube</a></div>{footer('I watched it',()=>mark('watch',true))}</>
       :task.kind==='read'?<>{task.comp==='cheat'?<Cheat lesson={l} go={go}/>:<Read lesson={l}/>}{footer('Done reading',()=>mark(task.id,true))}</>
       :task.kind==='training'?<><Training key={task.id} lesson={l} state={state} update={update} only={task.only} start={task.start} startTense={task.tense}/>{footer(`${task.done}/${task.total} verbs finished`)}</>
+      :task.kind==='lesen'?<><LesenTeil key={task.id} lesson={l} teil={l.lesen.find(t=>t.id===task.teilId)} state={state} update={update}/>{footer('Check your answers to finish')}</>
+      :task.kind==='transcript'?<><Transcript lesson={l} state={state} update={update}/>{footer('Done reading',()=>mark('read:transcript',true))}</>
       :task.kind==='text'?<><Practice key={task.id} lesson={l} state={state} update={update} only={task.textId}/>{footer('Check your answers to finish')}</>
       :<><SRS state={state} update={update} li={li}/>{footer(`${task.done}/${task.total} cards in box 2`)}</>}
     </section>;
@@ -580,6 +581,86 @@ function Roadmap({li,state,update,go}){
   </section>;
 }
 
+/* ---------- Goethe B2 Lesen: exam-style Teile with tap-to-translate ---------- */
+const fmtClock=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+function buildDict(lesson,gloss){
+  const d={},add=(f,e)=>{const k=f&&fold(f);if(k&&!d[k])d[k]=e};
+  lesson.nouns.forEach(n=>{const e={de:`${n.art} ${n.w}`,t:tr(n),img:n.img};[n.w,n.pl,n.w+'s',n.w+'es',n.w+'n',n.w+'en'].forEach(f=>add(f,e))});
+  lesson.mods.forEach(m=>{const e={de:m.w,t:tr(m),img:m.img};['','e','en','er','es','em'].forEach(x=>add(m.w+x,e))});
+  lesson.verbs.forEach(v=>{const e={de:v.inf,t:tr(v),img:v.img};add(clean(v.inf).replace(/^sich (\(Dat\.\) )?/,'').replace(/ um$/,''),e);add(v.pp,e);if(!v.sep)[...v.pr,...v.pt].forEach(f=>add(f.split(' ')[0],e))});
+  Object.entries(gloss||{}).forEach(([w,t])=>{d[fold(w)]={de:w,t}});
+  return d;
+}
+function Tap({text,dict,onPick}){return text.split(/([A-Za-zÄÖÜäöüß]+)/).map((p,k)=>{const e=k%2?dict[fold(p)]:null;
+  return e?<button key={k} type="button" onClick={()=>onPick({...e,w:p})} className="rounded-sm underline decoration-accent/60 decoration-dotted underline-offset-4 hover:bg-accent-soft">{p}</button>:<React.Fragment key={k}>{p}</React.Fragment>})}
+function WordPop({pop,onClose}){
+  if(!pop)return null;
+  return <div className="fixed inset-x-0 bottom-0 z-20 px-gutter pb-[max(12px,env(safe-area-inset-bottom,0px))]"><div role="status" className="panel mx-auto flex max-w-xl items-center gap-3 p-3 shadow-lg">
+    {pop.img?<span aria-hidden className="text-3xl">{pop.img}</span>:null}<div className="min-w-0 flex-1"><p lang="de" className="font-semibold text-ink">{pop.de}</p><p className="text-sm text-muted">{pop.t}</p></div>
+    <SpeakBtn text={pop.de}/><button aria-label="Close" onClick={onClose} className="rounded p-1 text-muted hover:text-ink"><LuX aria-hidden className="size-5"/></button></div></div>;
+}
+function LesenTeil({lesson,teil,state,update}){
+  const saved=state.lesen?.[teil.id];
+  const [ans,setAns]=useState(saved?.ans||{}),[checked,setChecked]=useState(!!saved),[secs,setSecs]=useState(0),[pop,setPop]=useState(null);
+  const dict=useMemo(()=>buildDict(lesson,teil.gloss),[teil.id]);
+  useEffect(()=>{if(checked)return;const id=setInterval(()=>{if(document.visibilityState==='visible')setSecs(x=>x+1)},1000);return()=>clearInterval(id)},[checked]);
+  const T=t=><Tap text={t} dict={dict} onPick={setPop}/>;
+  const score=teil.items.filter((it,i)=>ans[i]===it.a).length, all=teil.items.every((_,i)=>ans[i]!=null);
+  const check=()=>{setChecked(true);update(s=>({...s,lesen:{...(s.lesen||{}),[teil.id]:{score,total:teil.items.length,ans,secs,day:dayStr()}}}))};
+  const retry=()=>{setChecked(false);setAns({});setSecs(0)};
+  const pill=(i,k,label,wide)=>{const sel=ans[i]===k,right=teil.items[i].a===k;
+    const cls=checked?(right?'border-good bg-good-soft text-good':sel?'border-bad bg-bad-soft text-bad':'border-line text-muted opacity-60'):sel?'border-accent bg-accent text-on-accent':'border-line bg-surface text-ink hover:border-accent';
+    return <button key={k} disabled={checked} aria-pressed={sel} onClick={()=>setAns(a=>({...a,[i]:k}))} className={`rounded-md border ${wide?'flex w-full items-start gap-2 px-3 py-2 text-left':'min-w-9 px-2 py-1 font-mono text-sm'} ${cls}`}>{wide?<><span className="font-mono text-xs opacity-70">{k}</span><span lang="de" className="min-w-0">{label}</span></>:k}</button>};
+  const para=t=>teil.kind==='gaps'?t.split(/\{(\d)\}/).map((p,k)=>k%2?<span key={k} className={`mx-0.5 inline-flex rounded-md px-1.5 font-mono text-sm ${ans[+p-1]?'bg-accent text-on-accent':'bg-accent-soft text-accent'}`}>({p}) {ans[+p-1]||'___'}</span>:<React.Fragment key={k}>{T(p)}</React.Fragment>):T(t);
+  const over=secs>teil.minutes*60;
+  return <div className="space-y-4">
+    <div className="panel flex flex-wrap items-start justify-between gap-3 p-5"><div className="min-w-0 max-w-[65ch]"><p className="font-mono text-xs uppercase tracking-wider text-accent">Lesen · Teil {teil.teil} · {teil.items.length} Aufgaben</p><h3 className="font-display text-xl font-semibold text-ink">{teil.title}</h3><p lang="de" className="mt-1 text-ink/85">{teil.instr}</p></div>
+      <div className="text-right"><p className={`font-mono text-2xl tabular-nums ${over&&!checked?'text-bad':'text-ink'}`}>{fmtClock(checked?(saved?.secs??secs):secs)}</p><p className="text-xs text-muted">suggested {teil.minutes}:00</p></div></div>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+      <div lang="de" className="min-w-0 space-y-3">{teil.texts.map(t=><article key={t.label+t.body.slice(0,9)} className="panel p-5">{t.label||t.title?<p className="mb-2 flex items-center gap-2">{t.label?<span className="grid size-7 place-items-center rounded-full bg-accent font-mono text-sm text-on-accent">{t.label}</span>:null}{t.title?<span className="font-semibold text-ink">{t.title}</span>:null}</p>:null}
+        {t.body.split('\n').map((p,k)=><p key={k} className="mt-2 leading-relaxed text-ink first:mt-0">{para(p)}</p>)}</article>)}</div>
+      <div className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:self-start">
+        {teil.kind==='gaps'||teil.kind==='headings'?<div className="panel p-4"><p className="mb-2 font-mono text-xs uppercase tracking-wider text-accent">{teil.kind==='gaps'?'Sätze':'Überschriften'}</p><ul lang="de" className="space-y-1.5 text-sm">{teil.choices.map(([k,l])=><li key={k} className="flex gap-2"><span className="font-mono text-accent">{k}</span><span className="text-ink">{T(l)}</span></li>)}</ul></div>:null}
+        <ol className="panel divide-y divide-line px-4">{teil.items.map((it,i)=><li key={i} className="py-3"><p lang="de" className="text-ink"><span className="mr-1 font-mono text-muted">{i+1}.</span>{it.q}</p>
+          <div className={`mt-2 ${teil.kind==='mc'?'space-y-1.5':'flex flex-wrap gap-1.5'}`}>{teil.kind==='mc'?it.o.map((o,k)=>pill(i,'abc'[k],o,true)):teil.choices.map(([k])=>pill(i,k))}</div>
+          {checked?<p className={`mt-2 text-sm ${ans[i]===it.a?'text-good':'text-bad'}`}><span className="font-medium">{ans[i]===it.a?'Richtig. ':`Lösung: ${it.a}. `}</span><span lang="de" className="text-ink/80">{it.why}</span></p>:null}</li>)}</ol>
+        <div className="panel flex flex-wrap items-center gap-3 p-4">{checked?<><span className="font-mono text-lg text-ink">{saved?.score??score} / {teil.items.length}</span><Chip cls={(saved?.score??score)/teil.items.length>=.6?'bg-good-soft text-good':'bg-bad-soft text-bad'}>{(saved?.score??score)/teil.items.length>=.6?'pass level':'below 60%'}</Chip><button onClick={retry} className="ml-auto inline-flex items-center gap-1.5 text-sm text-accent underline underline-offset-2"><LuRotateCcw aria-hidden className="size-3.5"/>Try again</button></>
+          :<><button disabled={!all} onClick={check} className="rounded-md bg-accent px-4 py-2 font-medium text-on-accent disabled:opacity-40">Check answers</button>{!all?<span className="text-sm text-muted">Answer all {teil.items.length} to check</span>:null}</>}</div>
+      </div></div>
+    <p className="text-sm text-muted">Tap any underlined word for its translation. These are practice texts written in the exam format, not official Goethe papers.</p>
+    <WordPop pop={pop} onClose={()=>setPop(null)}/>
+  </div>;
+}
+function Goethe({lesson,state,update}){
+  const L=lesson.lesen||[], opts=[...L.map(t=>[t.id,`Teil ${t.teil}`,state.lesen?.[t.id]]),...lesson.texts.map(t=>[t.id,t.title,state.texts[t.id]])];
+  const [cur,setCur]=useState(opts[0][0]);const teil=L.find(t=>t.id===cur);
+  const done=L.filter(t=>state.lesen?.[t.id]), pts=done.reduce((a,t)=>a+state.lesen[t.id].score,0), max=done.reduce((a,t)=>a+t.items.length,0);
+  return <section><Head de="Goethe-Zertifikat B2 · Lesen" title={`Exam format: 5 Teile, ${L.reduce((a,t)=>a+t.items.length,0)} Aufgaben, 65 minutes${done.length?` · your score so far ${pts}/${max}`:''}`}/>
+    <div role="group" aria-label="Reading part" className="mb-5 flex flex-wrap gap-1.5">{opts.map(([id,label,r])=><button key={id} aria-pressed={cur===id} onClick={()=>setCur(id)} className={`rounded-full border px-3 py-1 text-sm ${cur===id?'border-accent bg-accent text-on-accent':'border-line text-muted hover:text-ink'}`}>{label}{r?` · ${r.score}/${r.total}`:''}</button>)}</div>
+    {teil?<LesenTeil key={teil.id} lesson={lesson} teil={teil} state={state} update={update}/>:<Practice key={cur} lesson={lesson} state={state} update={update} only={cur}/>}
+  </section>;
+}
+
+/* ---------- Transkript: paste once, read with tap-to-translate ---------- */
+const TS=/^\(?(\d{1,2}:\d{2}(?::\d{2})?)\)?\s*(.*)$/;
+function parseTranscript(t){const out=[];let ts=null;t.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>{const m=TS.exec(x);if(m&&!m[2]){ts=m[1];return}if(m){out.push({t:m[1],de:m[2]});ts=null;return}out.push({t:ts,de:x});ts=null});return out}
+function Transcript({lesson,state,update}){
+  const saved=state.transcripts?.[lesson.id], text=lesson.transcript||saved||'';
+  const [edit,setEdit]=useState(!text),[draft,setDraft]=useState(saved||''),[pop,setPop]=useState(null);
+  const dict=useMemo(()=>buildDict(lesson,{}),[]);
+  const lines=useMemo(()=>parseTranscript(text),[text]);
+  return <section><Head de="Transkript" title={text?`${lines.length} lines · tap underlined words · speaker reads a line aloud`:'Paste the video’s transcript once, then read along'}/>
+    {edit?<div className="panel mx-auto max-w-2xl p-5"><p className="font-semibold text-ink">How to get it from YouTube</p>
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-muted"><li><a className="text-accent underline underline-offset-2" href={lesson.url} target="_blank" rel="noreferrer">Open the video</a> on a computer.</li><li>Under the video, click <b>…more</b>, then <b>Show transcript</b>.</li><li>Select all the transcript text, copy it, and paste it below.</li></ol>
+      <label htmlFor="transcript-in" className="sr-only">Transcript</label><textarea id="transcript-in" value={draft} onChange={e=>setDraft(e.target.value)} rows={10} lang="de" placeholder="0:00&#10;Hallo und willkommen …" className="mt-3 w-full rounded-lg border border-line bg-surface p-3 font-mono text-sm text-ink"/>
+      <div className="mt-2 flex flex-wrap items-center gap-2"><button disabled={!draft.trim()} onClick={()=>{update(s=>({...s,transcripts:{...(s.transcripts||{}),[lesson.id]:draft.trim()}}));setEdit(false)}} className="rounded-md bg-accent px-4 py-1.5 font-medium text-on-accent disabled:opacity-40">Save transcript</button>{text?<button onClick={()=>setEdit(false)} className="text-sm text-muted underline underline-offset-2">Cancel</button>:null}
+        <span className="text-sm text-muted">Saved in this browser. Send it to Claude to add it to the site for good.</span></div></div>
+    :<><div className="panel divide-y divide-line px-4">{lines.map((x,k)=><p key={k} lang="de" className="grid grid-cols-[3.2rem_1fr_auto] items-start gap-2 py-2.5 leading-relaxed text-ink"><span className="pt-0.5 font-mono text-xs text-muted">{x.t||''}</span><span className="min-w-0"><Tap text={x.de} dict={dict} onPick={setPop}/></span><SpeakBtn text={x.de} size="size-4"/></p>)}</div>
+      {!lesson.transcript?<button onClick={()=>{setDraft(saved||'');setEdit(true)}} className="mt-3 inline-flex items-center gap-1.5 text-sm text-muted underline underline-offset-2"><LuPencil aria-hidden className="size-3.5"/>Edit transcript</button>:null}</>}
+    <WordPop pop={pop} onClose={()=>setPop(null)}/>
+  </section>;
+}
+
 /* ---------- Tagesmix: daily mixed review across all videos ---------- */
 function buildMix(state){
   const today=dayStr(), learned=DECK.filter(c=>isLearned(state,c.id));
@@ -589,7 +670,7 @@ function buildMix(state){
   const picked=[...rr(shuffle(due)),...rr(rest)].slice(0,20);
   const lessons=[...new Set(learned.map(c=>c.lesson))];
   const topics=shuffle(lessons.flatMap(li=>[...shuffle(LESSONS[li].grammar).slice(0,2).map(g=>({id:`g:${li}:${g.t}`,kind:'grammar',g,lesson:li})),...shuffle(LESSONS[li].mistakes).slice(0,2).map(m=>({id:`f:${li}:${m.bad}`,kind:'mistake',m,lesson:li}))])).slice(0,4);
-  const rtype=c=>c.kind==='grammar'?'grammar':c.kind==='mistake'?'mistake':c.kind==='phrase'?'tiles':c.kind==='verb'?shuffle(['type','perfekt','recall'])[0]:shuffle(['recall','type','recog'])[0];
+  const rtype=c=>c.kind==='grammar'?'grammar':c.kind==='mistake'?'mistake':c.kind==='phrase'?'tiles':c.kind==='verb'?shuffle(['perfekt','recall'])[0]:shuffle(['recall','recog'])[0];
   return {items:shuffle([...picked,...topics]).map(c=>({...c,rtype:rtype(c)})),due:due.length,lessons};
 }
 function Mix({state,update,go}){
@@ -669,8 +750,8 @@ function Pace({state,update}){
 /* ---------- shell ---------- */
 const ROOT=document.body?.dataset.root??'';
 const pageHref=l=>`${ROOT}lessons/${l.slug}.html`;
-const LESSON_TABS=[['roadmap','Roadmap',LuRoute],['mix','Tagesmix',LuBlend],['spickzettel','Spickzettel',LuStickyNote],['verben','Verben',LuBookOpen],['training','Training',LuDumbbell],['redemittel','Redemittel',LuMessageSquare],['vokabeln','Nomen & Adj.',LuTag],['grammatik','Grammatik',LuGitBranch],['goethe','Goethe B2',LuFileCheck],['fehler','Fehler',LuTriangleAlert],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
-const HUE={mix:'teal',roadmap:'indigo',spickzettel:'magenta',verben:'cyan',training:'tangerine',redemittel:'teal',vokabeln:'rose',grammatik:'violet',goethe:'amber',fehler:'crimson',srs:'blue',fortschritt:'green',lektionen:'indigo'};
+const LESSON_TABS=[['roadmap','Roadmap',LuRoute],['mix','Tagesmix',LuBlend],['spickzettel','Spickzettel',LuStickyNote],['transkript','Transkript',LuScrollText],['verben','Verben',LuBookOpen],['training','Training',LuDumbbell],['redemittel','Redemittel',LuMessageSquare],['vokabeln','Nomen & Adj.',LuTag],['grammatik','Grammatik',LuGitBranch],['goethe','Goethe B2',LuFileCheck],['fehler','Fehler',LuTriangleAlert],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
+const HUE={transkript:'violet',mix:'teal',roadmap:'indigo',spickzettel:'magenta',verben:'cyan',training:'tangerine',redemittel:'teal',vokabeln:'rose',grammatik:'violet',goethe:'amber',fehler:'crimson',srs:'blue',fortschritt:'green',lektionen:'indigo'};
 const HOME_TABS=[['lektionen','Lektionen',LuBookOpen],['mix','Tagesmix',LuBlend],['srs','SRS',LuLayers],['fortschritt','Fortschritt',LuChartColumn]];
 const Meter=({label,value,max,note,hue,pct})=><div data-hue={hue} className="min-w-0"><div className="flex items-baseline justify-between gap-2"><span className="text-[13px] text-muted">{label}</span><span className="font-mono text-sm tabular-nums whitespace-nowrap text-ink">{value}{pct?'%':max!=null?` / ${max}`:''}</span></div>
   {max!=null?<div className="mt-1.5 h-2 rounded-full bg-accent-soft"><div className="h-2 rounded-full bg-accent" style={{width:`${value/max*100}%`}}/></div>:<div className="mt-1 text-xs text-muted">{note}</div>}</div>;
@@ -708,7 +789,7 @@ function App(){
       <nav aria-label="Sections" className="mx-auto max-w-6xl overflow-x-auto px-gutter"><div className="flex w-max gap-1">{TABS.map(([k,t,I])=><button key={k} data-hue={HUE[k]} aria-current={tab===k?'page':undefined} onClick={()=>go(k)} className={`flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-2.5 py-2.5 text-sm ${tab===k?'border-accent font-semibold text-ink':'border-transparent text-muted hover:text-ink'}`}><I aria-hidden className="size-4 text-accent"/>{t}</button>)}</div></nav>
     </header>
     <main data-hue={HUE[tab]} className="mx-auto max-w-6xl px-gutter py-8">
-      {tab==='lektionen'?<Home state={state} update={update}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='mix'?<Mix key={focus.n||0} state={state} update={update} go={go}/>:tab==='roadmap'?<Roadmap key={focus.n||0} li={li} state={state} update={update} go={go}/>:tab==='spickzettel'?<Cheat lesson={lesson} go={go}/>:tab==='training'?<Training key={focus.n||0} start={focus.verb} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Practice lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
+      {tab==='lektionen'?<Home state={state} update={update}/>:tab==='verben'?<Verbs lesson={lesson}/>:tab==='mix'?<Mix key={focus.n||0} state={state} update={update} go={go}/>:tab==='roadmap'?<Roadmap key={focus.n||0} li={li} state={state} update={update} go={go}/>:tab==='spickzettel'?<Cheat lesson={lesson} go={go}/>:tab==='training'?<Training key={focus.n||0} start={focus.verb} lesson={lesson} state={state} update={update}/>:tab==='redemittel'?<Phrases lesson={lesson}/>:tab==='vokabeln'?<Vocab lesson={lesson}/>:tab==='grammatik'?<Grammar lesson={lesson}/>:tab==='goethe'?<Goethe lesson={lesson} state={state} update={update}/>:tab==='transkript'?<Transcript lesson={lesson} state={state} update={update}/>:tab==='fehler'?<Mistakes lesson={lesson}/>:tab==='srs'?<SRS state={state} update={update} li={li}/>:<Progress state={state} update={update} li={li}/>}
     </main>
   </div>;
 }

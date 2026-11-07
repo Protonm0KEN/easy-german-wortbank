@@ -17,6 +17,6 @@ const V=createHash('md5').update(R('assets/app.js')).update(R('assets/app.css'))
 const FONT='https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap';
 const page=(title,root,lesson)=>`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${title}</title><link rel="stylesheet" href="${FONT}"><link rel="stylesheet" href="${root}assets/app.css?v=${V}"></head><body data-root="${root}"${lesson?` data-lesson="${lesson}"`:''}><div id="root"></div><script src="${root}assets/app.js?v=${V}"></script></body></html>\n`;
 W('index.html',page('Easy German Wortbank','',null));
-const list=readdirSync('src/lessons').filter(f=>/^l\d+.*\.js$/.test(f));
+const list=readdirSync('src/lessons').filter(f=>/^l\d+.*\.js$/.test(f)&&/slug:'/.test(R('src/lessons/'+f,'utf8')));
 for(const f of list){const slug=f.replace('.js','');const t=/title:'([^']+)'/.exec(R('src/lessons/'+f,'utf8'))[1];W(`lessons/${slug}.html`,page(t,'../',slug))}
 console.log('built',list.length,'lesson page(s)');

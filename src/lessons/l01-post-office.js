@@ -1,4 +1,5 @@
 import {n,m,v,ph} from './helpers.js';
+import lesen from './l01-lesen.js';
 
 export default {
  id:'l01',slug:'l01-post-office',hub:'Die Post',
@@ -168,6 +169,7 @@ export default {
   'eilig':'⏰','nötig':'❗','nützlich':'👍','sogenannt':'💬','bestehend':'🏛️','bar':'💵','leer':'🫙','häufig':'🔁','innerhalb':'⏳','mittlerweile':'⌛','tatsächlich':'💯','ersichtlich':'👀',
   'ab·holen':'🙌','zurück·schicken':'↩️','verschicken':'📤','unterschreiben':'✍️','bestätigen':'✅','bestellen':'🛒','ab·geben':'🤲','benachrichtigen':'🔔','verstecken':'🙈','aus·füllen':'📝','ein·tragen':'🖊️','an·kommen':'🛬','an·bieten':'💁','zahlen':'💳','frankieren':'📮','aus·drucken':'🖨️','aus·messen':'📏','ein·geben':'⌨️','gelten':'☑️','sich kümmern um':'🤝','erhalten':'📥','zu·stellen':'🚚','nach·sehen':'🔍','sich (Dat.) merken':'🧠',
  },
+ lesen,
  cheat:[
   'Abholen: Abholschein und Personalausweis zeigen, dann am Gerät unterschreiben.',
   'Brief: der Empfänger unten rechts, das Porto oben rechts, der Absender hinten.',
